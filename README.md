@@ -6,11 +6,44 @@
 
 ---
 
-## 安装 Marketplace
+## 快速开始
+
+### 安装 Marketplace
 
 ```bash
-# 在 Claude Code 中执行
-/plugin marketplace add KaverinX/buddy-hub
+claude plugin marketplace add KaverinX/buddy-hub
+```
+
+### 更新 Marketplace
+
+```bash
+claude plugin marketplace update KaverinX/buddy-hub
+```
+
+### 卸载 Marketplace
+
+```bash
+claude plugin marketplace remove KaverinX/buddy-hub
+```
+
+---
+
+## 插件管理
+
+安装 Marketplace 后，可以管理其中的单个插件：
+
+```bash
+# 安装插件
+claude plugin install flowsmith@buddy-hub
+
+# 更新插件
+claude plugin update flowsmith@buddy-hub
+
+# 卸载插件
+claude plugin uninstall flowsmith@buddy-hub
+
+# 查看已安装插件
+claude plugin list
 ```
 
 ---
@@ -30,7 +63,7 @@
 
 **安装**：
 ```bash
-/plugin install flowsmith@buddy-hub
+claude plugin install flowsmith@buddy-hub
 ```
 
 详见 [flowsmith README](./plugins/flowsmith/README.md)。
