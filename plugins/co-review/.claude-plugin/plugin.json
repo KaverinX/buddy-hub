@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "co-review",
+  "version": "1.0.0",
+  "description": "团队协作审查工具。基于当前分支对比基线，三个独立 agent 并行分析（贡献画像/完成度/协作风险），输出团队级事实与个人级行动建议。深度集成 flowsmith 与 code-archaeologist 上下文。内置 TUI 可视化看板。",
+  "author": {
+    "name": "Velpro",
+    "email": "xvelpro8@gmail.com"
+  },
+  "homepage": "https://github.com/KaverinX/buddy-hub",
+  "repository": "https://github.com/KaverinX/buddy-hub",
+  "license": "MIT",
+  "keywords": [
+    "team-collaboration",
+    "code-review",
+    "git-analysis",
+    "multi-agent",
+    "tui",
+    "buddy-hub",
+    "flowsmith-integration",
+    "archaeology-integration"
+  ]
+}

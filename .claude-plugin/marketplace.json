@@ -32,6 +32,14 @@
       "version": "1.0.0",
       "category": "development",
       "tags": ["code-archaeology", "legacy-code", "refactoring", "git-history", "blast-radius", "multi-agent", "flowsmith-integration"]
+    },
+    {
+      "name": "co-review",
+      "source": "./plugins/co-review",
+      "description": "团队协作审查工具。三个独立 analyzer（贡献画像/完成度/协作风险）横向审查多人协作健康度，输出合并策略与个人行动建议。内置 TUI 可视化看板。深度集成 flowsmith 与 code-archaeologist 上下文：读取 plan/arch/lessons/archaeology-report 提供深度协同分析。",
+      "version": "1.0.0",
+      "category": "collaboration",
+      "tags": ["team-review", "git-analysis", "multi-author", "merge-strategy", "tui", "flowsmith-integration", "archaeology-integration"]
     }
   ]
 }
