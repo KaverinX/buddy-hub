@@ -68,23 +68,35 @@ claude plugin install flowsmith@buddy-hub
 
 详见 [flowsmith README](./plugins/flowsmith/README.md)。
 
-### 🎨 [formatter](./plugins/formatter) — 编辑即格式化的代码风格守卫
+### 🔍 [code-archaeologist](./plugins/code-archaeologist) — 老代码考古与重构辅助
 
-Claude 每次编辑文件后自动运行格式化，任务结束时做全局风格检查。内置 **Alipay Convention**（阿里巴巴 Java 开发规约）配置，支持扩展更多语言和风格。
+在重构、拆分或删除遗留代码前，派遣三个独立考古员（时间、空间、意图）进行深度尽调，识别隐式依赖与历史设计动机。
 
 **核心特性**：
-- PostToolUse Hook：编辑后自动 `spotless:apply` 单文件格式化
-- Stop Hook：任务结束前全局 `spotless:check` 风格检查
-- `/formatter:setup` 一键接入项目构建配置
-- 内置 Authoring Skill，引导 Claude 遵循编码规范中格式化器无法自动修复的部分
-- 支持 Maven / Gradle，支持自定义 Profile 扩展
+- 三维度并行分析：History + Dependency + Intent
+- 自动识别反射、配置驱动等隐式调用
+- 考古结论自动注入 flowsmith 任务约束
+- 经验沉淀至 lessons.md，防止重蹈覆辙
 
 **安装**：
 ```bash
-claude plugin install formatter@buddy-hub
+claude plugin install code-archaeologist@buddy-hub
 ```
 
-详见 [formatter README](./plugins/formatter/README.md)。
+### 👥 [co-review](./plugins/co-review) — 团队协作审查工具
+
+针对多人协作场景的横向审查。当多位开发者在同一分支工作时，分析团队协作健康度、接口冲突风险与完成度。
+
+**核心特性**：
+- 3 个 Subagent 独立审视：贡献画像、完成度、协作风险
+- 自动识别跨人接口签名变更通知
+- 纯终端 TUI 看板，支持私聊反馈模式
+- 输出可执行的合并策略建议
+
+**安装**：
+```bash
+claude plugin install co-review@buddy-hub
+```
 
 ---
 
@@ -96,6 +108,8 @@ buddy-hub/
 │   └── marketplace.json                  # Marketplace 元信息
 └── plugins/
     ├── flowsmith/                        # SOP 工作流插件
+    ├── code-archaeologist/               # 老代码考古插件
+    ├── co-review/                        # 团队协作审查插件
     └── formatter/                        # 代码格式化插件
 ```
 
@@ -104,8 +118,8 @@ buddy-hub/
 ## 后续规划
 
 更多 plugin 即将加入：
-- `code-archaeologist` — 老代码考古与重构辅助（规划中）
 - `release-captain` — 自动化发版流程编排（规划中）
+- `knowledge-base-v2` — 增强型跨项目经验检索（规划中）
 
 欢迎在 issues 中提建议或贡献新 plugin。
 

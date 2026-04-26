@@ -313,17 +313,49 @@
                 id: "flowsmith",
                 name: "flowsmith",
                 icon: "🔨",
-                desc: "状态机驱动的开发 SOP 工作流。通过强制执行标准开发阶段，确保代码从规划到上线的每一环节都具备最高质量。",
+                desc: "状态机驱动的开发 SOP 工作流。AI 时代的工程骨架，强制执行从规划到审查的闭环流程，禁止‘跳过思考直接编码’。",
                 category: "workflow",
                 version: "v1.0.0",
-                tags: ["SOP", "State Machine", "Multi-Agent"],
+                tags: ["SOP", "FSM", "Governance"],
                 features: [
                     "多 Agent 并行审查 (Security, Logic, Architecture)",
                     "基于 Hook 的状态合法性自动校验",
                     "跨任务知识沉淀到 .sop/lessons.md",
-                    "强制执行规划、架构、编码、优化四个闭环阶段"
+                    "驱动 Archaeologist 与 Co-review 的核心引擎"
                 ],
                 install: "claude plugin install flowsmith@buddy-hub"
+            },
+            {
+                id: "co-review",
+                name: "co-review",
+                icon: "👥",
+                desc: "团队协作审查工具。当多位开发者协作时，审视团队工作的健康度，输出个人级行动建议与合并策略。",
+                category: "collaboration",
+                version: "v1.0.0",
+                tags: ["Team Health", "Merge Strategy", "TUI"],
+                features: [
+                    "三层架构：贡献画像 + 完成度评估 + 风险检测",
+                    "独立上下文子 Agent 避免分析污染",
+                    "纯终端 TUI 可视化看板 (bash scripts/tui/dashboard.sh)",
+                    "生成私密反馈，保护开发者隐私的同时提升质量"
+                ],
+                install: "claude plugin install co-review@buddy-hub"
+            },
+            {
+                id: "code-archaeologist",
+                name: "code-archaeologist",
+                icon: "🔍",
+                desc: "老代码考古与重构辅助。分析遗留系统的历史提交与逻辑演进，为现代重构提供‘历史档案’。",
+                category: "exploration",
+                version: "v1.0.0",
+                tags: ["Refactoring", "Legacy", "Context"],
+                features: [
+                    "时间、空间、意图三维度并行考古",
+                    "自动识别 IDE 无法检测的反射/配置依赖",
+                    "考古结论自动注入 Flowsmith 的规划约束",
+                    "生成‘不可跨越的红线’清单预防重构回归"
+                ],
+                install: "claude plugin install code-archaeologist@buddy-hub"
             },
             {
                 id: "formatter",
@@ -340,22 +372,6 @@
                     "支持 Maven 与 Gradle 项目自动配置"
                 ],
                 install: "claude plugin install formatter@buddy-hub"
-            },
-            {
-                id: "archaeologist",
-                name: "archaeologist",
-                icon: "🔍",
-                desc: "老代码考古与重构辅助。分析遗留系统的历史提交与逻辑演进，提供低风险重构建议。",
-                category: "exploration",
-                version: "Coming Soon",
-                tags: ["Refactoring", "Legacy", "Context"],
-                features: [
-                    "全库逻辑关系图谱生成",
-                    "历史提交冲突风险预警",
-                    "自动化重构补丁生成",
-                    "关键逻辑链路追踪"
-                ],
-                install: "claude plugin install archaeologist@buddy-hub"
             }
         ];
 
@@ -509,18 +525,18 @@
                             <div className="roadmap-grid">
                                 <div className="roadmap-item">
                                     <span className="roadmap-status active">Development</span>
-                                    <h4>code-archaeologist</h4>
-                                    <p>深入分析遗留代码的历史上下文，辅助进行安全的模块重构与拆分。</p>
+                                    <h4>release-captain</h4>
+                                    <p>标准化发布流程，自动同步多语言 Changelog，管理语义化版本与发布门禁。</p>
                                 </div>
                                 <div className="roadmap-item">
                                     <span className="roadmap-status">Backlog</span>
-                                    <h4>release-captain</h4>
-                                    <p>标准化发布流程，自动同步 Changelog 并分发至多端市场。</p>
+                                    <h4>knowledge-base v2</h4>
+                                    <p>跨项目的经验沉淀中心，利用向量数据库实现 lessons.md 的全局语义搜索与注入。</p>
                                 </div>
                                 <div className="roadmap-item">
                                     <span className="roadmap-status">Research</span>
-                                    <h4>Dynamic Agentic UI</h4>
-                                    <p>基于插件上下文自动生成任务看板，实时可视化当前开发状态。</p>
+                                    <h4>Project Insight UI</h4>
+                                    <p>从 TUI 看板进化为基于 Web 的交互式仪表盘，实时呈现代码演进与团队健康曲线。</p>
                                 </div>
                             </div>
                         </div>
