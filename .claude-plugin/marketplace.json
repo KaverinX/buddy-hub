@@ -1,0 +1,21 @@
+{
+  "name": "buddy-hub",
+  "owner": {
+    "name": "Velpro",
+    "email": "xvelpro8@gmail.com"
+  },
+  "metadata": {
+    "description": "Velpro 的 Claude Code Plugin Marketplace。专注于开发者工作流、代码质量与多 agent 协作。",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "flowsmith",
+      "source": "./plugins/flowsmith",
+      "description": "状态机驱动的开发 SOP 工作流。规划 → 架构 → 编码 → 优化 → 三层并行审查 → 知识沉淀。",
+      "version": "1.0.0",
+      "category": "workflow",
+      "tags": ["sop", "state-machine", "multi-agent", "code-review"]
+    }
+  ]
+}
