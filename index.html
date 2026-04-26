@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>buddy-hub — Claude Code Plugin Marketplace</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/inter-ui@3.19.3/inter.css">
+    <style>
+        :root {
+            --bg: #030303;
+            --fg: #f5f5f5;
+            --accent: #6E56CF;
+            --accent-glow: rgba(110, 86, 207, 0.4);
+            --accent-muted: #3e337c;
+            --grid: rgba(255, 255, 255, 0.02);
+            --card-bg: rgba(255, 255, 255, 0.015);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: var(--bg);
+            color: var(--fg);
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            overflow-x: hidden;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Background Effects */
+        .grid-layer {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(to right, var(--grid) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glow-sphere {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            top: -200px;
+            right: -200px;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+            opacity: 0.5;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 32px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Nav */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 32px 0;
+            margin-bottom: 60px;
+        }
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            font-size: 1.1rem;
+        }
+        .nav-links { display: flex; gap: 32px; font-size: 14px; color: #888; }
+        .nav-links a { color: inherit; text-decoration: none; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--fg); }
+
+        /* Hero */
+        .hero {
+            padding: 60px 0 100px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            align-items: center;
+            gap: 60px;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 10vw, 5.5rem);
+            font-weight: 800;
+            letter-spacing: -0.06em;
+            line-height: 0.95;
+            margin-bottom: 24px;
+            background: linear-gradient(180deg, #fff 0%, #aaa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: #888;
+            max-width: 500px;
+            margin-bottom: 40px;
+            text-wrap: balance;
+        }
+
+        .cta-group { display: flex; gap: 16px; }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .btn-primary { background: var(--fg); color: var(--bg); border: none; }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .btn-secondary { background: transparent; color: var(--fg); border: 1px solid var(--card-border); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.05); }
+
+        /* Terminal - Polished */
+        .terminal-wrap { perspective: 1000px; }
+        .terminal {
+            background: #000;
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 28px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            transform: rotateY(-5deg) rotateX(2deg);
+            transition: transform 0.5s ease;
+        }
+        .terminal:hover { transform: rotateY(0) rotateX(0); }
+        
+        .terminal-header { display: flex; gap: 8px; margin-bottom: 24px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: #222; }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+
+        .line { margin-bottom: 6px; color: #888; white-space: pre-wrap; }
+        .line .p { color: var(--accent); margin-right: 12px; user-select: none; }
+        .line .cmd { color: #eee; }
+        .line .comment { color: #444; font-style: italic; }
+        .line .success { color: #27c93f; }
+
+        /* Plugins */
+        .section-header {
+            margin-bottom: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .section-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent);
+            margin-bottom: 12px;
+            display: block;
+        }
+        .section-title { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.03em; }
+
+        .plugin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 32px;
+            margin-bottom: 120px;
+        }
+
+        .plugin-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 48px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s cubic-bezier(0.2, 1, 0.3, 1);
+        }
+        .plugin-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top right, var(--accent-glow), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .plugin-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .plugin-card:hover::before { opacity: 1; }
+
+        .plugin-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 32px;
+            position: relative;
+        }
+
+        .plugin-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 16px; position: relative; }
+        .plugin-desc { font-size: 1rem; color: #888; margin-bottom: 32px; position: relative; flex: 1; }
+
+        .feature-list {
+            list-style: none;
+            margin-bottom: 32px;
+            position: relative;
+        }
+        .feature-list li {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .feature-list li::before { content: '→'; color: var(--accent); }
+
+        .plugin-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        .install-badge {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: #444;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+        }
+
+        /* Roadmap */
+        .roadmap-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 32px;
+            padding: 60px;
+            margin-bottom: 120px;
+        }
+        .roadmap-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 48px;
+        }
+        .roadmap-item h4 { margin-bottom: 12px; font-size: 1.1rem; }
+        .roadmap-item p { font-size: 14px; color: #666; }
+        .roadmap-status {
+            font-size: 10px;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #222;
+            color: #888;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+        .roadmap-status.active { background: var(--accent-muted); color: var(--fg); }
+
+        /* Footer */
+        footer {
+            padding: 100px 0 60px;
+            border-top: 1px solid var(--card-border);
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 60px;
+            margin-bottom: 80px;
+        }
+        .footer-brand h2 { margin-bottom: 16px; font-weight: 800; }
+        .footer-brand p { color: #666; max-width: 300px; }
+        .footer-links h5 { margin-bottom: 20px; text-transform: uppercase; font-size: 12px; letter-spacing: 0.1em; color: #444; }
+        .footer-links ul { list-style: none; }
+        .footer-links li { margin-bottom: 12px; }
+        .footer-links a { color: #888; text-decoration: none; font-size: 14px; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--fg); }
+
+        .bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            color: #444;
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 960px) {
+            .hero { grid-template-columns: 1fr; text-align: center; }
+            .tagline { margin: 0 auto 40px; }
+            .cta-group { justify-content: center; }
+            .terminal-wrap { max-width: 500px; margin: 0 auto; }
+            .plugin-grid { grid-template-columns: 1fr; }
+            .roadmap-grid { grid-template-columns: 1fr; gap: 32px; }
+            .footer-grid { grid-template-columns: 1fr; text-align: center; }
+            .footer-brand p { margin: 0 auto; }
+        }
+
+        @keyframes cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor { display: inline-block; width: 6px; height: 14px; background: var(--accent); vertical-align: middle; margin-left: 4px; animation: cursor-blink 1s infinite; }
+    </style>
+</head>
+<body>
+    <div class="grid-layer"></div>
+    <div class="glow-sphere"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const Typewriter = ({ text, delay = 50 }) => {
+            const [currentText, setCurrentText] = useState("");
+            const [currentIndex, setCurrentIndex] = useState(0);
+
+            useEffect(() => {
+                if (currentIndex < text.length) {
+                    const timeout = setTimeout(() => {
+                        setCurrentText(prev => prev + text[currentIndex]);
+                        setCurrentIndex(prev => prev + 1);
+                    }, delay);
+                    return () => clearTimeout(timeout);
+                }
+            }, [currentIndex, delay, text]);
+
+            return <span>{currentText}</span>;
+        };
+
+        const App = () => {
+            const [phase, setPhase] = useState(0);
+
+            useEffect(() => {
+                const timers = [
+                    setTimeout(() => setPhase(1), 1000),
+                    setTimeout(() => setPhase(2), 3000),
+                    setTimeout(() => setPhase(3), 5000)
+                ];
+                return () => timers.forEach(clearTimeout);
+            }, []);
+
+            return (
+                <div className="container">
+                    <nav>
+                        <div className="nav-logo">
+                            <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
+                                <rect x="10" y="10" width="20" height="20" rx="4" stroke="var(--accent)" strokeWidth="3"/>
+                                <path d="M20 5V10M20 30V35M5 20H10M30 20H35" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"/>
+                            </svg>
+                            buddy-hub
+                        </div>
+                        <div className="nav-links">
+                            <a href="#plugins">Plugins</a>
+                            <a href="#roadmap">Roadmap</a>
+                            <a href="https://github.com/KaverinX/buddy-hub">GitHub</a>
+                        </div>
+                    </nav>
+
+                    <header className="hero">
+                        <div className="hero-content">
+                            <h1>The Engine for Claude Code</h1>
+                            <p className="tagline">
+                                为 Claude 量身定制的插件生态。通过 SOP、自动化格式化与多 Agent 协作，将您的开发效率提升至工业级水平。
+                            </p>
+                            <div className="cta-group">
+                                <a href="#plugins" className="btn btn-primary">探索插件</a>
+                                <a href="https://github.com/KaverinX/buddy-hub" className="btn btn-secondary">查看源码</a>
+                            </div>
+                        </div>
+
+                        <div className="terminal-wrap">
+                            <div className="terminal">
+                                <div className="terminal-header">
+                                    <div className="dot red"></div>
+                                    <div className="dot yellow"></div>
+                                    <div className="dot green"></div>
+                                </div>
+                                <div className="line">
+                                    <span className="p">$</span>
+                                    <span className="cmd">
+                                        {phase >= 0 && <Typewriter text="claude plugin marketplace add KaverinX/buddy-hub" delay={30} />}
+                                    </span>
+                                </div>
+                                {phase >= 1 && (
+                                    <div className="line">
+                                        <span className="success">✓ Added marketplace: buddy-hub (KaverinX/buddy-hub)</span>
+                                    </div>
+                                )}
+                                {phase >= 1 && (
+                                    <div className="line">
+                                        <span className="p">$</span>
+                                        <span className="cmd">
+                                            {phase >= 2 && <Typewriter text="claude plugin install flowsmith@buddy-hub" delay={40} />}
+                                        </span>
+                                    </div>
+                                )}
+                                {phase >= 2 && phase < 3 && <div className="line comment"># Fetching plugin flowsmith...</div>}
+                                {phase >= 3 && (
+                                    <div className="line">
+                                        <span className="success">✓ Installed flowsmith v1.0.0</span>
+                                    </div>
+                                )}
+                                {phase >= 3 && (
+                                    <div className="line">
+                                        <span className="p">$</span>
+                                        <span className="cmd">claude plugin list</span>
+                                        <span className="cursor"></span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    <section id="plugins">
+                        <div className="section-header">
+                            <div>
+                                <span className="section-label">Plugin Ecosystem</span>
+                                <h2 className="section-title">核心插件集</h2>
+                            </div>
+                        </div>
+
+                        <div className="plugin-grid">
+                            <div className="plugin-card">
+                                <div className="plugin-icon">🔨</div>
+                                <h3 className="plugin-name">flowsmith</h3>
+                                <p className="plugin-desc">
+                                    状态机驱动的开发 SOP 工作流。强制执行“规划-架构-编码-优化-审查”闭环，拒绝零散开发。
+                                </p>
+                                <ul className="feature-list">
+                                    <li>多 Agent 审查 (Security/Logic/Arch)</li>
+                                    <li>知识沉淀 (.sop/lessons.md)</li>
+                                    <li>Hook 驱动的状态合法性检查</li>
+                                </ul>
+                                <div className="plugin-meta">
+                                    <div className="tag-row">
+                                        <span className="tag">Workflow</span>
+                                        <span className="tag">SOP</span>
+                                    </div>
+                                    <span className="install-badge">install flowsmith@buddy-hub</span>
+                                </div>
+                            </div>
+
+                            <div className="plugin-card">
+                                <div className="plugin-icon">🎨</div>
+                                <h3 className="plugin-name">formatter</h3>
+                                <p className="plugin-desc">
+                                    编辑即格式化的代码风格守卫。确保 Claude 的每一次修改都符合团队编码规约。
+                                </p>
+                                <ul className="feature-list">
+                                    <li>内置 Alipay/Alibaba Java 规约</li>
+                                    <li>Spotless 集成 (Maven/Gradle)</li>
+                                    <li>Post-Tool-Use 自动执行</li>
+                                </ul>
+                                <div className="plugin-meta">
+                                    <div className="tag-row">
+                                        <span className="tag">Linting</span>
+                                        <span className="tag">Spotless</span>
+                                    </div>
+                                    <span className="install-badge">install formatter@buddy-hub</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="roadmap">
+                        <div className="section-header">
+                            <div>
+                                <span className="section-label">Coming Soon</span>
+                                <h2 className="section-title">后续规划</h2>
+                            </div>
+                        </div>
+                        <div className="roadmap-container">
+                            <div className="roadmap-grid">
+                                <div className="roadmap-item">
+                                    <span className="roadmap-status active">Development</span>
+                                    <h4>code-archaeologist</h4>
+                                    <p>深入分析遗留代码的历史上下文，辅助进行安全的模块重构与拆分。</p>
+                                </div>
+                                <div className="roadmap-item">
+                                    <span className="roadmap-status">Backlog</span>
+                                    <h4>release-captain</h4>
+                                    <p>标准化发布流程，自动同步 Changelog 并分发至多端市场。</p>
+                                </div>
+                                <div className="roadmap-item">
+                                    <span className="roadmap-status">Research</span>
+                                    <h4>Agentic Testing</h4>
+                                    <p>基于插件上下文自动生成并执行集成测试用例。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <footer>
+                        <div className="footer-grid">
+                            <div className="footer-brand">
+                                <h2>buddy-hub</h2>
+                                <p>专注于提升 Claude Code 生产力的插件生态系统。由开发者为开发者打造。</p>
+                            </div>
+                            <div className="footer-links">
+                                <h5>Marketplace</h5>
+                                <ul>
+                                    <li><a href="#plugins">Browse Plugins</a></li>
+                                    <li><a href="https://github.com/KaverinX/buddy-hub/issues">Submit Plugin</a></li>
+                                    <li><a href="#">Security</a></li>
+                                </ul>
+                            </div>
+                            <div className="footer-links">
+                                <h5>Developer</h5>
+                                <ul>
+                                    <li><a href="https://github.com/KaverinX">GitHub</a></li>
+                                    <li><a href="mailto:xvelpro8@gmail.com">Contact</a></li>
+                                    <li><a href="#">Support</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="bottom-bar">
+                            <span>© 2026 Velpro. MIT Licensed.</span>
+                            <span>Created by Huashu-Design · 非官方项目首页</span>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
