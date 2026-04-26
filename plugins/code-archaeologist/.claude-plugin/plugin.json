@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "code-archaeologist",
+  "version": "1.0.0",
+  "description": "遗留代码考古工具。在重构前完成三维尽调：历史追溯（git 时间线）、影响范围（调用方与隐式依赖）、设计意图反推。三个独立 agent 并行考古，输出可信的重构前置报告。深度集成 flowsmith 工作流。",
+  "author": {
+    "name": "Velpro",
+    "email": "xvelpro8@gmail.com"
+  },
+  "homepage": "https://github.com/KaverinX/buddy-hub",
+  "repository": "https://github.com/KaverinX/buddy-hub",
+  "license": "MIT",
+  "keywords": [
+    "code-archaeology",
+    "legacy-code",
+    "refactoring",
+    "git-history",
+    "blast-radius",
+    "multi-agent",
+    "buddy-hub",
+    "flowsmith-integration"
+  ]
+}

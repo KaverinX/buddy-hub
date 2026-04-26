@@ -20,9 +20,18 @@
     {
       "name": "formatter",
       "description": "Auto-format source files after each Claude Code edit. Ships with the Alipay Convention (Alibaba Java Coding Guidelines) profile out of the box; architecture supports adding more languages and style profiles.",
+      "version": "1.0.0",
       "source": "./plugins/formatter",
       "category": "code-quality",
       "tags": ["formatter", "code-style", "java", "alipay", "alibaba", "spotless"]
+    },
+    {
+      "name": "code-archaeologist",
+      "source": "./plugins/code-archaeologist",
+      "description": "遗留代码考古工具。三个独立 agent（历史/依赖/意图）对重构目标做三维尽调，输出可执行的重构策略。深度集成 flowsmith：自动检测重构意图、自动注入约束到 plan.md、共享 lessons.md 知识库。",
+      "version": "1.0.0",
+      "category": "development",
+      "tags": ["code-archaeology", "legacy-code", "refactoring", "git-history", "blast-radius", "multi-agent", "flowsmith-integration"]
     }
   ]
 }
