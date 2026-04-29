@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import html.parser as p; pp=p.HTMLParser\\(\\); pp.feed\\(open\\('index.html'\\).read\\(\\)\\); print\\('html ok'\\)\")",
+      "Bash(open -a Safari /Users/velpro/VSWorkplace/buddy-hub/index.html)"
+    ]
+  }
+}

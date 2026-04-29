@@ -3,792 +3,1192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>buddy-hub — Claude Code Plugin Marketplace</title>
+    <title>buddy-hub — SOPs for Claude Code</title>
+    <meta name="description" content="状态机驱动的 Claude Code 插件生态：以工程纪律对抗 vibe coding，从规划到发布每个环节都有专属 Agent 护航。">
+    <meta property="og:title" content="buddy-hub — SOPs for Claude Code">
+    <meta property="og:description" content="一个完整的插件生态系统，覆盖开发全生命周期 —— 从规划、编码、考古、审查到团队协作，每个环节都有专属 Agent 护航。">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='6' y='6' width='20' height='20' rx='4' fill='none' stroke='%23d4a55a' stroke-width='2'/%3E%3Crect x='13' y='13' width='6' height='6' rx='1' fill='%23d4a55a'/%3E%3C/svg%3E">
+
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/inter-ui@3.19.3/inter.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg: #030303;
-            --fg: #f5f5f5;
-            --accent: #6E56CF;
-            --accent-glow: rgba(110, 86, 207, 0.4);
-            --accent-muted: #3e337c;
-            --grid: rgba(255, 255, 255, 0.02);
-            --card-bg: rgba(255, 255, 255, 0.015);
-            --card-border: rgba(255, 255, 255, 0.06);
-            --drawer-bg: #0a0a0a;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
-            --green: #27c93f;
-            --yellow: #ffbd2e;
-            --red: #ff5f56;
-            --blue: #4fa6ed;
+            --bg: #0d0c0a;
+            --bg-2: #14120e;
+            --surface: #16140f;
+            --surface-2: #1c1913;
+
+            --border: rgba(244, 237, 224, 0.07);
+            --border-strong: rgba(244, 237, 224, 0.14);
+
+            --fg: #f4ede0;
+            --fg-2: #d3cbbb;
+            --muted: #8a8472;
+            --muted-2: #5a554c;
+
+            --accent: #d4a55a;
+            --accent-2: #b8884a;
+            --accent-soft: rgba(212, 165, 90, 0.13);
+            --accent-line: rgba(212, 165, 90, 0.32);
+
+            --green: #88a86b;
+            --amber: #d4a55a;
+            --red: #c87060;
+            --blue: #7e9bb5;
+
+            --serif: "Instrument Serif", "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
+            --sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         html { scroll-behavior: smooth; }
         body {
-            background-color: var(--bg);
+            background: var(--bg);
             color: var(--fg);
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            overflow-x: hidden;
-            line-height: 1.5;
+            font-family: var(--sans);
+            font-feature-settings: "ss01", "cv11";
+            font-variant-numeric: tabular-nums;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.55;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(1100px 600px at 85% -8%, rgba(212, 165, 90, 0.05), transparent 65%),
+                radial-gradient(900px 500px at -8% 28%, rgba(212, 165, 90, 0.025), transparent 65%);
         }
 
-        .grid-layer {
+        ::selection { background: var(--accent-soft); color: var(--fg); }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+            border-radius: 3px;
+        }
+
+        .skip {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            background: var(--accent);
+            color: #1a1612;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 9999;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .skip:focus { left: 24px; top: 24px; }
+
+        .bp-grid {
             position: fixed;
             inset: 0;
+            pointer-events: none;
+            z-index: 0;
             background-image:
-                linear-gradient(to right, var(--grid) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
-            background-size: 60px 60px;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .glow-sphere {
-            position: fixed;
-            width: 800px;
-            height: 800px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            top: -300px;
-            left: -100px;
-            pointer-events: none;
-            z-index: 0;
-            filter: blur(100px);
-            opacity: 0.3;
-        }
-        .glow-sphere-2 {
-            position: fixed;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(79, 166, 237, 0.15) 0%, transparent 70%);
-            bottom: -200px;
-            right: -100px;
-            pointer-events: none;
-            z-index: 0;
-            filter: blur(120px);
-            opacity: 0.3;
+                linear-gradient(to right, rgba(244, 237, 224, 0.022) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(244, 237, 224, 0.022) 1px, transparent 1px);
+            background-size: 96px 96px;
+            -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black, transparent 80%);
+                    mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black, transparent 80%);
         }
 
-        .container {
-            max-width: 1200px;
+        .grain {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.32;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        }
+
+        .shell {
+            max-width: 1240px;
             margin: 0 auto;
-            padding: 0 40px;
+            padding: 0 32px;
             position: relative;
             z-index: 1;
         }
 
-        /* Nav */
-        nav {
+        /* ─── Nav ─────────────────────────────────────────────── */
+        .nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 40px 0;
+            padding: 28px 0;
+            border-bottom: 1px solid var(--border);
         }
-        .nav-logo {
+        .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-weight: 800;
-            font-size: 1.25rem;
-            letter-spacing: -0.03em;
-        }
-        .nav-links { display: flex; gap: 40px; font-size: 14px; font-weight: 500; }
-        .nav-links a { color: #888; text-decoration: none; transition: color 0.2s; }
-        .nav-links a:hover { color: var(--fg); }
-
-        /* Hero */
-        .hero {
-            padding: 80px 0 120px;
-            display: grid;
-            grid-template-columns: 1.4fr 1fr;
-            align-items: center;
-            gap: 80px;
-        }
-
-        h1 {
-            font-size: clamp(3.5rem, 10vw, 6rem);
-            font-weight: 900;
-            letter-spacing: -0.06em;
-            line-height: 0.9;
-            margin-bottom: 32px;
-            background: linear-gradient(180deg, #fff 30%, #666 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .tagline {
-            font-size: 1.25rem;
-            color: #888;
-            max-width: 540px;
-            margin-bottom: 48px;
-            line-height: 1.6;
-        }
-
-        .cta-group { display: flex; gap: 20px; }
-        .btn {
-            padding: 14px 28px;
-            border-radius: 10px;
+            gap: 14px;
             font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 15px;
+            letter-spacing: -0.015em;
             text-decoration: none;
+            color: var(--fg);
+        }
+        .brand-mark {
+            width: 28px; height: 28px;
+            border: 1px solid var(--accent-line);
+            border-radius: 6px;
+            display: grid; place-items: center;
+            background: var(--accent-soft);
+        }
+        .brand-mark::before {
+            content: "";
+            width: 8px; height: 8px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+        .brand-tag {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted-2);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            padding-left: 14px;
+            border-left: 1px solid var(--border);
+        }
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+        }
+        .nav-links a {
+            color: inherit;
+            text-decoration: none;
+            position: relative;
+            transition: color 200ms ease;
+        }
+        .nav-links a:hover { color: var(--fg); }
+        .nav-links a::after {
+            content: "";
+            position: absolute;
+            left: 0; bottom: -6px;
+            width: 0; height: 1px;
+            background: var(--accent);
+            transition: width 220ms ease;
+        }
+        .nav-links a:hover::after { width: 100%; }
+
+        /* ─── Hero ────────────────────────────────────────────── */
+        .hero {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 72px;
+            padding: 110px 0 70px;
+            align-items: center;
+        }
+        .hero-eyebrow {
             display: inline-flex;
             align-items: center;
+            gap: 14px;
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--muted);
+            margin-bottom: 36px;
+        }
+        .hero-eyebrow::before {
+            content: "";
+            width: 32px; height: 1px;
+            background: var(--accent-line);
+        }
+        .hero-eyebrow .ver {
+            color: var(--accent);
+        }
+        .hero h1 {
+            font-family: var(--serif);
+            font-weight: 400;
+            font-size: clamp(3rem, 7.5vw, 5.6rem);
+            line-height: 0.96;
+            letter-spacing: -0.025em;
+            margin-bottom: 28px;
+            text-wrap: balance;
+        }
+        .hero h1 em {
+            font-style: italic;
+            color: var(--accent);
+        }
+        .hero .tagline {
+            font-size: 1.0625rem;
+            color: var(--fg-2);
+            max-width: 56ch;
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+        .cta {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 22px;
+            border-radius: 8px;
+            font-family: var(--sans);
+            font-size: 13.5px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 220ms cubic-bezier(.2,.8,.2,1);
+            border: 1px solid transparent;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #1a1612;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 36px -14px rgba(212, 165, 90, 0.55);
+            background: var(--accent-2);
+        }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-ghost {
+            border-color: var(--border-strong);
+            color: var(--fg);
+            background: transparent;
+        }
+        .btn-ghost:hover {
+            border-color: var(--accent-line);
+            background: var(--accent-soft);
+        }
+
+        /* ─── Terminal ──────────────────────────────────────────── */
+        .terminal {
+            background: linear-gradient(180deg, #0a0907 0%, #0e0c08 100%);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            font-family: var(--mono);
+            font-size: 12.5px;
+            overflow: hidden;
+            box-shadow:
+                0 1px 0 rgba(244, 237, 224, 0.04) inset,
+                0 30px 60px -22px rgba(0, 0, 0, 0.65),
+                0 0 0 1px rgba(212, 165, 90, 0.05);
+        }
+        .term-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(244, 237, 224, 0.014);
+        }
+        .dot { width: 11px; height: 11px; border-radius: 50%; }
+        .dot.r { background: var(--red); }
+        .dot.y { background: var(--amber); opacity: 0.85; }
+        .dot.g { background: var(--green); }
+        .term-label {
+            margin-left: auto;
+            font-size: 10.5px;
+            color: var(--muted-2);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+        }
+        .term-body {
+            padding: 22px 22px 26px;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
             gap: 8px;
         }
-        .btn-primary { background: var(--fg); color: var(--bg); border: none; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,255,255,0.15); }
-        .btn-secondary { background: rgba(255,255,255,0.03); color: var(--fg); border: 1px solid var(--card-border); }
-        .btn-secondary:hover { background: rgba(255,255,255,0.08); }
-
-        /* Terminal */
-        .terminal-wrap { position: relative; }
-        .terminal {
-            background: #000;
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 32px;
-            font-family: var(--font-mono);
-            font-size: 13px;
-            box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-            transform: perspective(1000px) rotateY(-5deg);
-        }
-        .terminal-header { display: flex; gap: 8px; margin-bottom: 24px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; background: #1a1a1a; }
-        .dot.red { background: var(--red); }
-        .dot.yellow { background: var(--yellow); }
-        .dot.green { background: var(--green); }
-        .line { margin-bottom: 8px; color: #666; }
-        .line .p { color: var(--accent); margin-right: 12px; }
-        .line .cmd { color: #eee; }
-        .line .success { color: var(--green); }
-
-        /* Stats Bar */
-        .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
-            margin-bottom: 120px;
-            padding: 40px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
-        }
-        .stat-item { text-align: center; }
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 900;
-            background: linear-gradient(135deg, var(--accent), var(--blue));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .stat-label { font-size: 13px; color: #555; margin-top: 4px; }
-
-        /* Section Headers */
-        .section-header {
-            margin-bottom: 48px;
-        }
-        .section-label {
-            font-size: 12px;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .section-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(180deg, #fff 30%, #888 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .term-line { color: var(--fg-2); line-height: 1.6; }
+        .term-line .prompt { color: var(--accent); margin-right: 10px; }
+        .term-line .ok { color: var(--green); }
+        .term-line .dim { color: var(--muted); }
+        .cursor {
             display: inline-block;
+            width: 7px; height: 13px;
+            background: var(--accent);
+            margin-left: 1px;
+            vertical-align: -1px;
+            animation: blink 1s steps(2) infinite;
         }
-        .section-subtitle {
-            color: #555;
-            margin-top: 12px;
-            font-size: 1.05rem;
-            max-width: 600px;
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* ─── Strip / Stats ─────────────────────────────────────── */
+        .strip {
+            margin: 64px 0 120px;
+            padding: 36px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 1fr 1px 1fr 1px 1fr 1px 1fr;
+            gap: 0;
+            align-items: stretch;
+        }
+        .strip-divider { background: var(--border); }
+        .stat {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4px 32px;
+            gap: 8px;
+        }
+        .stat:first-child { padding-left: 4px; }
+        .stat:last-child { padding-right: 4px; }
+        .stat-num {
+            font-family: var(--serif);
+            font-size: 2.7rem;
+            line-height: 1;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            color: var(--fg);
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-num em { color: var(--accent); font-style: italic; }
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+        }
+
+        /* ─── Section header ─────────────────────────────────────── */
+        .sec-head {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 64px;
+            align-items: end;
+            margin-bottom: 56px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sec-tag {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .sec-tag .num {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted-2);
+            letter-spacing: 0.18em;
+        }
+        .sec-tag .label {
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent);
+        }
+        .sec-title {
+            font-family: var(--serif);
+            font-weight: 400;
+            font-size: clamp(2rem, 4.2vw, 2.8rem);
+            letter-spacing: -0.02em;
+            line-height: 1.05;
+            text-wrap: balance;
+        }
+        .sec-title em { color: var(--accent); font-style: italic; }
+        .sec-sub {
+            margin-top: 16px;
+            color: var(--muted);
+            max-width: 64ch;
+            font-size: 0.95rem;
             line-height: 1.7;
         }
 
-        /* Filter Tabs */
-        .filter-tabs {
+        /* ─── Plugin grid ──────────────────────────────────────────── */
+        .plug-toolbar {
             display: flex;
-            gap: 8px;
-            padding: 4px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 12px;
-            width: fit-content;
-            border: 1px solid var(--card-border);
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
-        .filter-tab {
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #666;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
+        .tabs {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 3px;
+            background: var(--surface);
+        }
+        .tab {
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            padding: 7px 14px;
+            border-radius: 4px;
             background: transparent;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 180ms;
         }
-        .filter-tab.active { background: var(--card-bg); color: var(--fg); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .tab:hover { color: var(--fg); }
+        .tab.active { background: var(--accent-soft); color: var(--accent); }
+        .plug-count {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted-2);
+        }
+        .plug-count strong { color: var(--fg); font-weight: 500; }
 
-        /* Plugin Grid */
-        .plugin-grid {
+        .plug-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-            gap: 32px;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
             margin-bottom: 120px;
         }
-
-        .plugin-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 40px;
-            transition: all 0.4s cubic-bezier(0.2, 1, 0.3, 1);
+        .plug-card {
+            background: var(--bg);
+            padding: 36px 36px 28px;
             cursor: pointer;
+            position: relative;
+            transition: background 250ms ease;
             display: flex;
             flex-direction: column;
-            position: relative;
+            min-height: 280px;
+            border: none;
+            text-align: left;
+            font-family: inherit;
+            color: inherit;
         }
-        .plugin-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-8px);
-            background: rgba(110, 86, 207, 0.03);
-        }
-        .plugin-card.core-plugin::before {
-            content: 'CORE';
+        .plug-card:hover { background: var(--bg-2); }
+        .plug-card::after {
+            content: "";
             position: absolute;
-            top: 16px;
-            right: 16px;
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            color: var(--accent);
-            background: rgba(110, 86, 207, 0.1);
-            border: 1px solid rgba(110, 86, 207, 0.2);
-            padding: 3px 8px;
-            border-radius: 6px;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), rgba(212, 165, 90, 0.08), transparent 55%);
+            opacity: 0;
+            transition: opacity 250ms ease;
         }
-
-        .plugin-top { display: flex; justify-content: space-between; margin-bottom: 24px; }
-        .plugin-icon {
-            width: 54px; height: 54px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 24px;
-            border: 1px solid var(--card-border);
-        }
-        .plugin-version { font-size: 11px; color: #444; font-family: var(--font-mono); }
-
-        .plugin-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
-        .plugin-role { font-size: 12px; color: var(--accent); margin-bottom: 12px; font-weight: 500; }
-        .plugin-desc { font-size: 0.95rem; color: #888; margin-bottom: 24px; line-height: 1.6; flex: 1; }
-
-        .plugin-meta-row {
+        .plug-card:hover::after { opacity: 1; }
+        .plug-head {
             display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
             gap: 16px;
             margin-bottom: 20px;
+        }
+        .plug-id {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .plug-index {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted-2);
+            letter-spacing: 0.14em;
+        }
+        .plug-name {
+            font-family: var(--serif);
+            font-size: 1.7rem;
+            font-weight: 400;
+            letter-spacing: -0.015em;
+            line-height: 1.1;
+        }
+        .plug-meta-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .plug-core {
+            font-family: var(--mono);
+            font-size: 9.5px;
+            letter-spacing: 0.22em;
+            color: var(--accent);
+            border: 1px solid var(--accent-line);
+            padding: 3px 7px;
+            border-radius: 3px;
+            background: var(--accent-soft);
+        }
+        .plug-version {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted-2);
+        }
+        .plug-role {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            margin-bottom: 14px;
+        }
+        .plug-desc {
+            color: var(--fg-2);
+            font-size: 0.94rem;
+            line-height: 1.7;
+            margin-bottom: 24px;
+            flex: 1;
+        }
+        .plug-foot {
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
             flex-wrap: wrap;
         }
-        .plugin-meta-badge {
-            font-size: 11px;
-            color: #666;
-            font-family: var(--font-mono);
+        .plug-meta {
             display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .plugin-meta-badge svg { opacity: 0.5; }
-
-        .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        .tag {
+            gap: 18px;
+            font-family: var(--mono);
             font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            color: #666;
+            color: var(--muted);
+        }
+        .plug-meta strong { color: var(--fg-2); font-weight: 500; }
+        .plug-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .plug-tag {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted);
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: rgba(244, 237, 224, 0.025);
         }
 
-        /* Ecosystem Architecture */
-        .ecosystem-section {
-            margin-bottom: 120px;
-        }
-        .ecosystem-diagram {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 32px;
-            padding: 60px;
+        /* ─── Ecosystem ────────────────────────────────────────────── */
+        .eco-section { margin-bottom: 120px; }
+        .eco-frame {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 64px 40px 48px;
             position: relative;
-            overflow: hidden;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 47px,
+                    rgba(244, 237, 224, 0.018) 47px,
+                    rgba(244, 237, 224, 0.018) 48px
+                );
         }
-        .ecosystem-diagram::before {
-            content: '';
+        .eco-frame::before {
+            content: "fig.01 — system topology";
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(110, 86, 207, 0.06) 0%, transparent 70%);
-            pointer-events: none;
+            top: 18px; left: 28px;
+            font-family: var(--mono);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--muted-2);
         }
-
+        .eco-frame::after {
+            content: "buddy-hub / v0.4";
+            position: absolute;
+            top: 18px; right: 28px;
+            font-family: var(--mono);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--muted-2);
+        }
         .eco-core {
+            border: 1px solid var(--accent-line);
+            background: rgba(212, 165, 90, 0.045);
+            border-radius: 12px;
+            padding: 26px 36px;
+            text-align: center;
+            max-width: 520px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .eco-core h4 {
+            font-family: var(--serif);
+            font-size: 1.6rem;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+            margin-bottom: 8px;
+        }
+        .eco-core h4 em { color: var(--accent); font-style: italic; }
+        .eco-core p {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+            line-height: 1.5;
+        }
+        .eco-core p span { color: var(--fg-2); }
+        .eco-trunk {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 48px;
+            gap: 12px;
+            margin: 24px 0 28px;
+        }
+        .eco-trunk .v-line {
+            width: 1px; height: 24px;
+            background: linear-gradient(to bottom, var(--accent-line), var(--border));
+        }
+        .eco-trunk-label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.05em;
+            background: var(--bg);
+            padding: 4px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        .eco-trunk-label span { color: var(--accent); }
+        .eco-bus {
             position: relative;
+            height: 42px;
+            margin-bottom: 0;
         }
-        .eco-core-box {
-            background: rgba(110, 86, 207, 0.08);
-            border: 2px solid rgba(110, 86, 207, 0.3);
-            border-radius: 20px;
-            padding: 28px 48px;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-        .eco-core-box h4 {
-            font-size: 1.3rem;
-            font-weight: 800;
-            margin-bottom: 4px;
-        }
-        .eco-core-box p {
-            color: #888;
-            font-size: 13px;
-        }
-        .eco-connector-v {
-            width: 2px;
-            height: 32px;
-            background: linear-gradient(180deg, rgba(110, 86, 207, 0.3), rgba(110, 86, 207, 0.08));
-            position: relative;
-            z-index: 1;
-        }
-        .eco-hub {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 20px 32px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            font-family: var(--font-mono);
-            position: relative;
-            z-index: 2;
-        }
-        .eco-connector-spread {
-            display: flex;
-            justify-content: center;
-            gap: 0;
-            margin: 0;
-            position: relative;
-            height: 48px;
-        }
-        .eco-connector-spread::before {
-            content: '';
+        .eco-bus::before {
+            content: "";
             position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 2px;
-            height: 16px;
-            background: rgba(255,255,255,0.06);
+            top: 0; left: 50%;
+            width: 1px; height: 22px;
+            background: var(--border);
         }
-        .eco-connector-spread::after {
-            content: '';
+        .eco-bus::after {
+            content: "";
             position: absolute;
-            top: 16px;
-            left: calc(50% - 240px);
-            width: 480px;
-            height: 2px;
-            background: rgba(255,255,255,0.06);
+            top: 22px;
+            left: 16.66%; right: 16.66%;
+            height: 1px;
+            background: var(--border);
         }
-
         .eco-branches {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
-            position: relative;
+            gap: 16px;
         }
         .eco-branch {
             position: relative;
-            padding-top: 24px;
+            padding-top: 22px;
         }
         .eco-branch::before {
-            content: '';
+            content: "";
             position: absolute;
-            top: 0;
-            left: 50%;
+            top: 0; left: 50%;
+            width: 1px; height: 22px;
+            background: var(--border);
             transform: translateX(-50%);
-            width: 2px;
-            height: 24px;
-            background: rgba(255,255,255,0.06);
         }
-        .eco-branch-box {
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            background: rgba(255,255,255,0.01);
-            transition: all 0.3s;
+        .eco-branch-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 22px 22px 20px;
+            background: var(--surface);
+            transition: border-color 250ms;
         }
-        .eco-branch-box:hover {
-            border-color: rgba(110, 86, 207, 0.2);
-            background: rgba(110, 86, 207, 0.02);
+        .eco-branch-card:hover { border-color: var(--accent-line); }
+        .eco-branch-name {
+            font-family: var(--serif);
+            font-size: 1.2rem;
+            font-weight: 400;
+            margin-bottom: 4px;
+            letter-spacing: -0.01em;
         }
-        .eco-branch-icon { font-size: 28px; margin-bottom: 12px; }
-        .eco-branch-name { font-weight: 700; margin-bottom: 4px; font-size: 1rem; }
-        .eco-branch-role { font-size: 12px; color: #666; margin-bottom: 12px; }
+        .eco-branch-role {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 14px;
+        }
         .eco-branch-arrow {
+            font-family: var(--mono);
             font-size: 11px;
-            color: #444;
-            font-family: var(--font-mono);
+            color: var(--muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            line-height: 1.6;
         }
         .eco-branch-arrow .dir { color: var(--accent); }
-
-        .eco-shared-layer {
-            margin-top: 40px;
+        .eco-shared {
+            margin-top: 36px;
+            padding-top: 22px;
+            border-top: 1px dashed var(--border);
             display: flex;
-            justify-content: center;
-            gap: 24px;
             flex-wrap: wrap;
+            gap: 14px;
+            justify-content: center;
         }
         .eco-shared-item {
-            background: rgba(39, 201, 63, 0.04);
-            border: 1px dashed rgba(39, 201, 63, 0.15);
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-size: 12px;
-            color: #666;
-            font-family: var(--font-mono);
-        }
-        .eco-shared-item span { color: var(--green); }
-
-        .eco-orthogonal {
-            margin-top: 32px;
-            display: flex;
-            justify-content: center;
-        }
-        .eco-orth-box {
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px 32px;
-            text-align: center;
-            background: rgba(255,255,255,0.01);
-            position: relative;
-        }
-        .eco-orth-box::before {
-            content: 'ORTHOGONAL';
-            position: absolute;
-            top: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 0.15em;
-            color: #444;
-            background: var(--bg);
-            padding: 0 8px;
-        }
-        .eco-orth-name { font-weight: 700; font-size: 14px; }
-        .eco-orth-desc { font-size: 12px; color: #555; margin-top: 4px; }
-
-        /* Roadmap */
-        .roadmap-section { margin-bottom: 120px; }
-        .roadmap-container {
-            background: var(--card-bg);
-            border-radius: 32px;
-            padding: 60px;
-            border: 1px solid var(--card-border);
-        }
-        .roadmap-timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-        .roadmap-item {
-            display: grid;
-            grid-template-columns: 120px 48px 1fr;
-            gap: 0;
-            align-items: start;
-            padding: 32px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.03);
-        }
-        .roadmap-item:last-child { border-bottom: none; }
-        .roadmap-phase {
+            font-family: var(--mono);
             font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding-top: 4px;
+            color: var(--muted);
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: rgba(244, 237, 224, 0.014);
         }
-        .roadmap-phase.dev { color: var(--green); }
-        .roadmap-phase.backlog { color: var(--yellow); }
-        .roadmap-phase.research { color: var(--blue); }
-        .roadmap-dot-col {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 6px;
-        }
-        .roadmap-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid #333;
-            position: relative;
-        }
-        .roadmap-dot.dev { border-color: var(--green); background: rgba(39, 201, 63, 0.2); }
-        .roadmap-dot.backlog { border-color: var(--yellow); background: rgba(255, 189, 46, 0.2); }
-        .roadmap-dot.research { border-color: var(--blue); background: rgba(79, 166, 237, 0.2); }
-        .roadmap-line {
-            width: 2px;
-            flex: 1;
-            min-height: 40px;
-            background: rgba(255,255,255,0.04);
-            margin-top: 8px;
-        }
-        .roadmap-content h4 {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        .roadmap-content p {
-            color: #666;
-            font-size: 14px;
-            line-height: 1.7;
-            margin-bottom: 12px;
-        }
-        .roadmap-connects {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .roadmap-connect-tag {
-            font-size: 10px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            background: rgba(110, 86, 207, 0.06);
-            border: 1px solid rgba(110, 86, 207, 0.12);
-            color: var(--accent);
-        }
+        .eco-shared-item .key { color: var(--accent); }
 
-        /* Vision */
+        /* ─── Vision ─────────────────────────────────────────────── */
         .vision-section { margin-bottom: 120px; }
         .vision-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 40px 32px;
         }
-        .vision-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 36px;
-            transition: all 0.3s;
+        .vision-item {
+            position: relative;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
         }
-        .vision-card:hover {
-            border-color: rgba(110, 86, 207, 0.15);
+        .vision-item:nth-child(1) { grid-column: span 7; }
+        .vision-item:nth-child(2) { grid-column: span 5; }
+        .vision-item:nth-child(3) { grid-column: span 5; }
+        .vision-item:nth-child(4) { grid-column: span 7; }
+        .vision-item:nth-child(5) { grid-column: span 7; }
+        .vision-item:nth-child(6) { grid-column: span 5; }
+        .v-num {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--accent);
+            letter-spacing: 0.1em;
+            margin-bottom: 14px;
         }
-        .vision-number {
-            font-size: 3rem;
-            font-weight: 900;
-            background: linear-gradient(135deg, rgba(110, 86, 207, 0.3), rgba(110, 86, 207, 0.05));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1;
-            margin-bottom: 16px;
-        }
-        .vision-card h4 {
-            font-size: 1.1rem;
-            font-weight: 700;
+        .v-title {
+            font-family: var(--serif);
+            font-size: 1.55rem;
+            font-weight: 400;
+            letter-spacing: -0.015em;
             margin-bottom: 12px;
+            line-height: 1.2;
         }
-        .vision-card p {
-            font-size: 14px;
-            color: #666;
-            line-height: 1.7;
+        .v-desc {
+            color: var(--fg-2);
+            font-size: 0.95rem;
+            line-height: 1.75;
+            max-width: 50ch;
         }
 
-        /* Drawer */
+        /* ─── Roadmap ────────────────────────────────────────────── */
+        .roadmap-section { margin-bottom: 120px; }
+        .roadmap-frame {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .roadmap-row {
+            display: grid;
+            grid-template-columns: 110px 24px 1fr;
+            gap: 32px;
+            padding: 32px 36px;
+            align-items: start;
+            border-bottom: 1px solid var(--border);
+            transition: background 200ms;
+        }
+        .roadmap-row:last-child { border-bottom: none; }
+        .roadmap-row:hover { background: var(--bg-2); }
+        .roadmap-phase {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            padding-top: 8px;
+        }
+        .roadmap-phase.dev { color: var(--green); }
+        .roadmap-phase.backlog { color: var(--accent); }
+        .roadmap-phase.research { color: var(--blue); }
+        .roadmap-marker {
+            display: flex;
+            justify-content: center;
+            padding-top: 12px;
+        }
+        .roadmap-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--muted-2);
+        }
+        .roadmap-dot.dev { background: var(--green); box-shadow: 0 0 0 4px rgba(136, 168, 107, 0.12); }
+        .roadmap-dot.backlog { background: var(--accent); box-shadow: 0 0 0 4px rgba(212, 165, 90, 0.12); }
+        .roadmap-dot.research { background: var(--blue); box-shadow: 0 0 0 4px rgba(126, 155, 181, 0.12); }
+        .roadmap-content h4 {
+            font-family: var(--serif);
+            font-size: 1.4rem;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+            margin-bottom: 8px;
+        }
+        .roadmap-content p {
+            color: var(--fg-2);
+            font-size: 0.92rem;
+            line-height: 1.75;
+            max-width: 64ch;
+            margin-bottom: 14px;
+        }
+        .roadmap-connects { display: flex; gap: 6px; flex-wrap: wrap; }
+        .roadmap-connect {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: rgba(244, 237, 224, 0.018);
+            border: 1px solid var(--border);
+        }
+        .roadmap-connect .arr { color: var(--accent); margin-right: 4px; }
+
+        /* ─── Footer ──────────────────────────────────────────── */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 80px 0 0;
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr;
+            gap: 56px;
+            align-items: start;
+        }
+        .foot-brand h3 {
+            font-family: var(--serif);
+            font-size: 1.8rem;
+            font-weight: 400;
+            letter-spacing: -0.015em;
+            margin-bottom: 14px;
+        }
+        .foot-brand h3 em { color: var(--accent); font-style: italic; }
+        .foot-brand p {
+            color: var(--muted);
+            max-width: 42ch;
+            line-height: 1.7;
+            font-size: 0.92rem;
+        }
+        .foot-col h5 {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--muted-2);
+            margin-bottom: 18px;
+        }
+        .foot-col ul { list-style: none; }
+        .foot-col li { margin-bottom: 12px; }
+        .foot-col a {
+            color: var(--fg-2);
+            text-decoration: none;
+            font-size: 0.92rem;
+            transition: color 200ms;
+        }
+        .foot-col a:hover { color: var(--accent); }
+        .foot-bar {
+            margin-top: 64px;
+            padding: 24px 0 32px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--muted-2);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        /* ─── Drawer ──────────────────────────────────────────── */
         .drawer-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(8px);
+            background: rgba(8, 7, 5, 0.72);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             z-index: 1000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 250ms ease;
         }
         .drawer-overlay.active { opacity: 1; pointer-events: auto; }
-
         .drawer {
             position: fixed;
-            right: 0; top: 0; bottom: 0;
-            width: 100%;
-            max-width: 640px;
-            background: var(--drawer-bg);
+            top: 0; right: 0; bottom: 0;
+            width: 100%; max-width: 580px;
+            background: var(--bg);
+            border-left: 1px solid var(--border-strong);
             z-index: 1001;
             transform: translateX(100%);
-            transition: transform 0.4s cubic-bezier(0.2, 1, 0.3, 1);
-            border-left: 1px solid var(--card-border);
-            padding: 60px;
+            transition: transform 380ms cubic-bezier(.2, .85, .3, 1);
             overflow-y: auto;
+            padding: 56px 48px 80px;
         }
         .drawer.active { transform: translateX(0); }
-
         .drawer-close {
             position: absolute;
-            top: 32px; right: 32px;
-            background: none; border: none; color: #444;
-            font-size: 24px; cursor: pointer; transition: color 0.2s;
+            top: 24px; right: 24px;
+            width: 36px; height: 36px;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 18px;
+            display: grid; place-items: center;
+            transition: all 200ms;
+            line-height: 1;
         }
-        .drawer-close:hover { color: var(--fg); }
-
-        .drawer-header { margin-bottom: 40px; }
-        .drawer-icon { font-size: 48px; margin-bottom: 24px; }
-        .drawer-title { font-size: 2.2rem; font-weight: 800; margin-bottom: 8px; }
-        .drawer-role { font-size: 14px; color: var(--accent); margin-bottom: 16px; font-weight: 500; }
-
-        .install-box {
-            background: #000;
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .install-code { font-family: var(--font-mono); font-size: 13px; color: var(--accent); }
-        .btn-copy { background: none; border: none; color: #444; cursor: pointer; font-size: 12px; text-transform: uppercase; font-weight: 700; }
-        .btn-copy:hover { color: var(--fg); }
-
-        .drawer-section { margin-bottom: 36px; }
-        .drawer-section h4 {
+        .drawer-close:hover { color: var(--fg); border-color: var(--border-strong); background: var(--surface); }
+        .drawer-eyebrow {
+            font-family: var(--mono);
             font-size: 11px;
+            color: var(--accent);
             text-transform: uppercase;
-            color: #444;
+            letter-spacing: 0.18em;
+            margin-bottom: 12px;
+        }
+        .drawer-title {
+            font-family: var(--serif);
+            font-size: 2.4rem;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+            line-height: 1.05;
+        }
+        .drawer-role {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 22px;
+        }
+        .drawer-desc {
+            color: var(--fg-2);
+            font-size: 1rem;
+            line-height: 1.75;
+            margin-bottom: 36px;
+        }
+        .drawer-block { margin-bottom: 32px; }
+        .drawer-block h4 {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--muted-2);
             margin-bottom: 16px;
-            letter-spacing: 0.1em;
-            font-weight: 700;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 500;
         }
-        .drawer-feature-list { list-style: none; }
-        .drawer-feature-list li { margin-bottom: 10px; display: flex; gap: 12px; color: #888; font-size: 14px; }
-        .drawer-feature-list li::before { content: '\2713'; color: var(--accent); font-weight: 700; }
-
-        .drawer-commands-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        .drawer-cmd {
-            font-family: var(--font-mono);
-            font-size: 12px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.04);
-            border-radius: 8px;
-            color: #888;
-        }
-        .drawer-cmd .name { color: var(--accent); }
-
-        .drawer-arch-row {
+        .drawer-arch {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            gap: 10px;
+        }
+        .drawer-arch-cell {
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
             text-align: center;
         }
-        .drawer-arch-item {
-            padding: 16px;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.04);
-            border-radius: 12px;
-        }
-        .drawer-arch-number {
-            font-size: 1.5rem;
-            font-weight: 800;
+        .drawer-arch-num {
+            font-family: var(--serif);
+            font-size: 1.85rem;
             color: var(--accent);
+            font-weight: 400;
+            line-height: 1;
         }
         .drawer-arch-label {
-            font-size: 11px;
-            color: #555;
-            margin-top: 4px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-top: 6px;
         }
-
+        .install {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #0a0907;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .install code {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            color: var(--accent);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .install button {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 10.5px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            cursor: pointer;
+            transition: all 200ms;
+            flex-shrink: 0;
+        }
+        .install button:hover { color: var(--fg); border-color: var(--border-strong); }
+        .drawer-cmds {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .drawer-cmd {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--accent);
+        }
+        .drawer-feat {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .drawer-feat li {
+            display: flex;
+            gap: 12px;
+            color: var(--fg-2);
+            font-size: 0.9rem;
+            line-height: 1.65;
+        }
+        .drawer-feat li::before {
+            content: "→";
+            color: var(--accent);
+            font-family: var(--mono);
+            flex-shrink: 0;
+        }
         .drawer-deps {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-        .drawer-dep-item {
-            display: flex;
+        .drawer-dep {
+            display: grid;
+            grid-template-columns: 24px auto 1fr;
+            gap: 12px;
             align-items: center;
-            gap: 10px;
-            font-size: 13px;
-            color: #666;
-            padding: 10px 14px;
-            background: rgba(255,255,255,0.015);
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.03);
+            padding: 12px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
         }
-        .drawer-dep-arrow { color: var(--accent); font-family: var(--font-mono); font-size: 11px; }
-        .drawer-dep-name { color: #aaa; font-weight: 600; }
+        .drawer-dep .dir {
+            font-family: var(--mono);
+            color: var(--accent);
+            font-size: 14px;
+        }
+        .drawer-dep .target {
+            font-family: var(--mono);
+            color: var(--fg);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .drawer-dep .desc {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        .drawer-meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .drawer-meta-key {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted-2);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 6px;
+        }
+        .drawer-meta-val { font-size: 13px; color: var(--fg-2); }
 
-        /* Footer */
-        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 80px; padding: 100px 0; border-top: 1px solid var(--card-border); }
-        .footer-links h5 { color: #555; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 20px; }
-        .footer-links ul { list-style: none; }
-        .footer-links li { margin-bottom: 12px; }
-        .footer-links a { color: #444; text-decoration: none; font-size: 14px; transition: color 0.2s; }
-        .footer-links a:hover { color: var(--fg); }
+        /* ─── Animations ──────────────────────────────────────── */
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal {
+            animation: rise 600ms cubic-bezier(.2, .85, .25, 1) both;
+        }
 
+        /* ─── Responsive ──────────────────────────────────────── */
         @media (max-width: 1024px) {
-            .hero { grid-template-columns: 1fr; text-align: center; }
-            .tagline { margin: 0 auto 48px; }
-            .cta-group { justify-content: center; }
-            .terminal { transform: none; max-width: 500px; margin: 0 auto; }
-            .stats-bar { grid-template-columns: repeat(2, 1fr); }
-            .eco-branches { grid-template-columns: 1fr; }
-            .eco-connector-spread::after { width: 2px; height: 48px; left: 50%; }
-            .vision-grid { grid-template-columns: 1fr; }
-            .roadmap-item { grid-template-columns: 100px 32px 1fr; }
-            .footer-grid { grid-template-columns: 1fr; text-align: center; }
-            .drawer-commands-grid { grid-template-columns: 1fr; }
-            .drawer-arch-row { grid-template-columns: repeat(3, 1fr); }
+            .hero { grid-template-columns: 1fr; gap: 56px; padding: 80px 0 60px; }
+            .terminal { max-width: 560px; }
+            .strip {
+                grid-template-columns: 1fr 1fr;
+                row-gap: 32px;
+                column-gap: 32px;
+            }
+            .strip-divider { display: none; }
+            .sec-head { grid-template-columns: 1fr; gap: 16px; }
+            .plug-grid { grid-template-columns: 1fr; }
+            .eco-branches { grid-template-columns: 1fr; gap: 22px; }
+            .eco-bus { display: none; }
+            .eco-branch::before { display: none; }
+            .vision-grid { grid-template-columns: 1fr; gap: 32px; }
+            .vision-item { grid-column: 1 / -1 !important; }
+            .footer { grid-template-columns: 1fr; gap: 40px; }
+            .roadmap-row { grid-template-columns: 90px 16px 1fr; padding: 28px 24px; }
+        }
+        @media (max-width: 640px) {
+            .shell { padding: 0 22px; }
+            .nav-links { display: none; }
+            .brand-tag { display: none; }
+            .strip { grid-template-columns: 1fr; }
+            .strip-divider { display: none; }
+            .stat { padding: 0; }
+            .drawer { padding: 44px 24px 60px; }
+            .drawer-cmds { grid-template-columns: 1fr; }
+            .drawer-arch { grid-template-columns: 1fr; }
+            .roadmap-row { grid-template-columns: 1fr; gap: 16px; padding: 24px 22px; }
+            .roadmap-marker { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="grid-layer"></div>
-    <div class="glow-sphere"></div>
-    <div class="glow-sphere-2"></div>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="bp-grid" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
         const pluginData = [
             {
                 id: "flowsmith",
                 name: "flowsmith",
-                icon: "\u{1F528}",
                 role: "Core Orchestrator",
                 isCore: true,
-                desc: "\u72B6\u6001\u673A\u9A71\u52A8\u7684\u5F00\u53D1 SOP \u5DE5\u4F5C\u6D41\u3002AI \u65F6\u4EE3\u7684\u5DE5\u7A0B\u9AA8\u67B6\uFF0C\u5F3A\u5236\u6267\u884C\u4ECE\u89C4\u5212\u5230\u5BA1\u67E5\u7684\u95ED\u73AF\u6D41\u7A0B\uFF0C\u7981\u6B62\u2018\u8DF3\u8FC7\u601D\u8003\u76F4\u63A5\u7F16\u7801\u2019\u3002",
+                desc: "状态机驱动的开发 SOP 工作流。AI 时代的工程骨架，强制执行从规划到审查的闭环流程，禁止「跳过思考直接编码」。",
                 category: "workflow",
                 version: "v1.0.0",
                 tags: ["SOP", "FSM", "Multi-Agent", "Governance"],
@@ -797,26 +1197,25 @@
                 skills: 3,
                 hooks: 1,
                 features: [
-                    "\u72B6\u6001\u673A\u5F3A\u5236\u6D41\u7A0B: PLANNING \u2192 ARCHITECTURE \u2192 IMPLEMENTATION \u2192 OPTIMIZATION \u2192 REVIEW \u2192 DONE",
-                    "\u591A Agent \u5E76\u884C\u5BA1\u67E5 (Security / Logic / Architecture / Optimization)",
-                    "\u57FA\u4E8E Hook \u7684\u72B6\u6001\u5408\u6CD5\u6027\u81EA\u52A8\u6821\u9A8C",
-                    "\u8DE8\u4EFB\u52A1\u77E5\u8BC6\u6C89\u6DC0\u5230 .sop/lessons.md",
-                    "\u9A71\u52A8 code-archaeologist \u4E0E co-review \u7684\u6838\u5FC3\u5F15\u64CE"
+                    "状态机强制流程: PLANNING → ARCHITECTURE → IMPLEMENTATION → OPTIMIZATION → REVIEW → DONE",
+                    "多 Agent 并行审查 (Security / Logic / Architecture / Optimization)",
+                    "基于 Hook 的状态合法性自动校验",
+                    "跨任务知识沉淀到 .sop/lessons.md",
+                    "驱动 code-archaeologist 与 co-review 的核心引擎"
                 ],
                 dependencies: [
-                    { direction: "drives", target: "code-archaeologist", desc: "\u68C0\u6D4B\u5230\u91CD\u6784\u610F\u56FE\u65F6\u81EA\u52A8\u5EFA\u8BAE\u8003\u53E4" },
-                    { direction: "drives", target: "co-review", desc: "\u5BA1\u67E5\u5B8C\u6210\u540E\u81EA\u52A8\u89E6\u53D1\u56E2\u961F\u534F\u4F5C\u5206\u6790" },
-                    { direction: "shared", target: "lessons.md", desc: "\u5171\u4EAB\u8DE8\u4EFB\u52A1\u77E5\u8BC6\u5E93" }
+                    { direction: "drives", target: "code-archaeologist", desc: "检测到重构意图时自动建议考古" },
+                    { direction: "drives", target: "co-review", desc: "审查完成后自动触发团队协作分析" },
+                    { direction: "shared", target: "lessons.md", desc: "共享跨任务知识库" }
                 ],
                 install: "claude plugin install flowsmith@buddy-hub"
             },
             {
                 id: "code-archaeologist",
                 name: "code-archaeologist",
-                icon: "\u{1F50D}",
                 role: "Legacy Code Analyst",
                 isCore: false,
-                desc: "\u8001\u4EE3\u7801\u8003\u53E4\u4E0E\u91CD\u6784\u8F85\u52A9\u3002\u4ECE\u5386\u53F2\u3001\u4F9D\u8D56\u3001\u610F\u56FE\u4E09\u4E2A\u7EF4\u5EA6\u6DF1\u5EA6\u5206\u6790\u9057\u7559\u7CFB\u7EDF\uFF0C\u4E3A\u73B0\u4EE3\u91CD\u6784\u63D0\u4F9B\u2018\u5386\u53F2\u6863\u6848\u2019\u3002",
+                desc: "老代码考古与重构辅助。从历史、依赖、意图三个维度深度分析遗留系统，为现代重构提供「历史档案」。",
                 category: "exploration",
                 version: "v1.0.0",
                 tags: ["Refactoring", "Legacy", "3D Analysis", "Red Lines"],
@@ -825,27 +1224,26 @@
                 skills: 1,
                 hooks: 1,
                 features: [
-                    "\u65F6\u95F4\u3001\u7A7A\u95F4\u3001\u610F\u56FE\u4E09\u7EF4\u5EA6\u5E76\u884C\u8003\u53E4",
-                    "\u81EA\u52A8\u8BC6\u522B IDE \u65E0\u6CD5\u68C0\u6D4B\u7684\u53CD\u5C04/\u914D\u7F6E/\u5E8F\u5217\u5316\u4F9D\u8D56",
-                    "\u751F\u6210\u2018\u4E0D\u53EF\u8DE8\u8D8A\u7684\u7EA2\u7EBF\u2019\u6E05\u5355\u9884\u9632\u91CD\u6784\u56DE\u5F52",
-                    "\u8003\u53E4\u7ED3\u8BBA\u81EA\u52A8\u6CE8\u5165 flowsmith \u7684\u89C4\u5212\u7EA6\u675F",
-                    "\u51B3\u7B56\u77E9\u9635\u751F\u6210\u53EF\u6267\u884C\u7684\u91CD\u6784\u7B56\u7565\u5EFA\u8BAE"
+                    "时间、空间、意图三维度并行考古",
+                    "自动识别 IDE 无法检测的反射/配置/序列化依赖",
+                    "生成「不可跨越的红线」清单预防重构回归",
+                    "考古结论自动注入 flowsmith 的规划约束",
+                    "决策矩阵生成可执行的重构策略建议"
                 ],
                 dependencies: [
-                    { direction: "receives", target: "flowsmith", desc: "\u63A5\u6536\u91CD\u6784\u610F\u56FE\u68C0\u6D4B\uFF0C\u88AB flowsmith \u89E6\u53D1" },
-                    { direction: "injects", target: "flowsmith", desc: "\u7ED3\u8BBA\u81EA\u52A8\u6CE8\u5165 plan.md \u7684\u7EA6\u675F\u6761\u4EF6" },
-                    { direction: "feeds", target: "co-review", desc: "\u7EA2\u7EBF\u6E05\u5355\u8F93\u5165 co-review \u98CE\u9669\u5206\u6790" },
-                    { direction: "shared", target: "lessons.md", desc: "\u5171\u4EAB\u8DE8\u4EFB\u52A1\u77E5\u8BC6\u5E93" }
+                    { direction: "receives", target: "flowsmith", desc: "接收重构意图检测，被 flowsmith 触发" },
+                    { direction: "injects", target: "flowsmith", desc: "结论自动注入 plan.md 的约束条件" },
+                    { direction: "feeds", target: "co-review", desc: "红线清单输入 co-review 风险分析" },
+                    { direction: "shared", target: "lessons.md", desc: "共享跨任务知识库" }
                 ],
                 install: "claude plugin install code-archaeologist@buddy-hub"
             },
             {
                 id: "co-review",
                 name: "co-review",
-                icon: "\u{1F465}",
                 role: "Team Health Inspector",
                 isCore: false,
-                desc: "\u56E2\u961F\u534F\u4F5C\u5BA1\u67E5\u5DE5\u5177\u3002\u5F53\u591A\u4F4D\u5F00\u53D1\u8005\u534F\u4F5C\u65F6\uFF0C\u6C34\u5E73\u5BA1\u89C6\u56E2\u961F\u5DE5\u4F5C\u7684\u5065\u5EB7\u5EA6\uFF0C\u8F93\u51FA\u4E2A\u4EBA\u7EA7\u884C\u52A8\u5EFA\u8BAE\u4E0E\u5408\u5E76\u7B56\u7565\u3002",
+                desc: "团队协作审查工具。当多位开发者协作时，水平审视团队工作的健康度，输出个人级行动建议与合并策略。",
                 category: "collaboration",
                 version: "v1.0.0",
                 tags: ["Team Health", "Merge Strategy", "TUI", "Privacy-First"],
@@ -854,26 +1252,25 @@
                 skills: 1,
                 hooks: 1,
                 features: [
-                    "\u4E09\u5C42\u67B6\u6784: \u8D21\u732E\u753B\u50CF + \u5B8C\u6210\u5EA6\u8BC4\u4F30 + \u534F\u4F5C\u98CE\u9669\u68C0\u6D4B",
-                    "\u72EC\u7ACB\u4E0A\u4E0B\u6587\u5B50 Agent \u907F\u514D\u5206\u6790\u6C61\u67D3",
-                    "\u7EAF\u7EC8\u7AEF TUI \u53EF\u89C6\u5316\u770B\u677F",
-                    "\u9690\u79C1\u4F18\u5148: \u4E2A\u4EBA\u53CD\u9988\u4E25\u683C\u9694\u79BB\uFF0C\u4E0D\u505A\u6A2A\u5411\u5BF9\u6BD4",
-                    "5 \u7EA7\u5408\u5E76\u7B56\u7565: merge-now \u2192 staged \u2192 coordinate \u2192 block \u2192 escalate"
+                    "三层架构: 贡献画像 + 完成度评估 + 协作风险检测",
+                    "独立上下文子 Agent 避免分析污染",
+                    "纯终端 TUI 可视化看板",
+                    "隐私优先: 个人反馈严格隔离，不做横向对比",
+                    "5 级合并策略: merge-now → staged → coordinate → block → escalate"
                 ],
                 dependencies: [
-                    { direction: "receives", target: "flowsmith", desc: "\u8BFB\u53D6 .sop/ \u4E0A\u4E0B\u6587\u8FDB\u884C\u66F4\u7CBE\u51C6\u7684\u5206\u6790" },
-                    { direction: "receives", target: "code-archaeologist", desc: "\u8BFB\u53D6\u8003\u53E4\u7EA2\u7EBF\u68C0\u6D4B\u8FB9\u754C\u8FDD\u89C4" },
-                    { direction: "shared", target: "lessons.md", desc: "\u5171\u4EAB\u8DE8\u4EFB\u52A1\u77E5\u8BC6\u5E93" }
+                    { direction: "receives", target: "flowsmith", desc: "读取 .sop/ 上下文进行更精准的分析" },
+                    { direction: "receives", target: "code-archaeologist", desc: "读取考古红线检测边界违规" },
+                    { direction: "shared", target: "lessons.md", desc: "共享跨任务知识库" }
                 ],
                 install: "claude plugin install co-review@buddy-hub"
             },
             {
                 id: "formatter",
                 name: "formatter",
-                icon: "\u{1F3A8}",
                 role: "Code Style Guardian",
                 isCore: false,
-                desc: "\u7F16\u8F91\u5373\u683C\u5F0F\u5316\u7684\u4EE3\u7801\u98CE\u683C\u5B88\u536B\u3002\u81EA\u52A8\u5C06\u56E2\u961F\u89C4\u7EA6\u6CE8\u5165 Claude \u7684\u7F16\u8F91\u52A8\u4F5C\u4E2D\uFF0C\u6D88\u9664\u98CE\u683C\u4E89\u8BBA\u3002",
+                desc: "编辑即格式化的代码风格守卫。自动将团队规约注入 Claude 的编辑动作中，消除风格争论。",
                 category: "quality",
                 version: "v1.1.0",
                 tags: ["Spotless", "Alipay Convention", "Auto-format"],
@@ -882,14 +1279,14 @@
                 skills: 1,
                 hooks: 2,
                 features: [
-                    "\u5185\u7F6E\u652F\u4ED8\u5B9D/\u963F\u91CC\u5DF4\u5DF4 Java \u4EE3\u7801\u5F00\u53D1\u89C4\u7EA6",
-                    "Post-Tool-Use \u81EA\u52A8\u6267\u884C\u5355\u6587\u4EF6\u683C\u5F0F\u5316",
-                    "Stop Hook \u6267\u884C\u5168\u5C40\u9879\u76EE\u98CE\u683C\u68C0\u67E5",
-                    "\u652F\u6301 Maven \u4E0E Gradle \u9879\u76EE\u81EA\u52A8\u914D\u7F6E",
-                    "\u53EF\u6269\u5C55 Profile \u67B6\u6784\uFF0C\u8F7B\u677E\u6DFB\u52A0\u65B0\u8BED\u8A00\u652F\u6301"
+                    "内置支付宝/阿里巴巴 Java 代码开发规约",
+                    "Post-Tool-Use 自动执行单文件格式化",
+                    "Stop Hook 执行全局项目风格检查",
+                    "支持 Maven 与 Gradle 项目自动配置",
+                    "可扩展 Profile 架构，轻松添加新语言支持"
                 ],
                 dependencies: [
-                    { direction: "orthogonal", target: "\u72EC\u7ACB\u8FD0\u884C", desc: "\u4E0E\u5176\u4ED6\u63D2\u4EF6\u65E0\u72B6\u6001\u4EA4\u4E92\uFF0C\u6B63\u4EA4\u5C42\u8FD0\u4F5C" }
+                    { direction: "orthogonal", target: "独立运行", desc: "与其他插件无状态交互，正交层运作" }
                 ],
                 install: "claude plugin install formatter@buddy-hub"
             }
@@ -900,38 +1297,87 @@
                 phase: "dev",
                 label: "Development",
                 name: "release-captain",
-                desc: "\u6807\u51C6\u5316\u53D1\u5E03\u6D41\u7A0B\uFF0C\u81EA\u52A8\u540C\u6B65\u591A\u8BED\u8A00 Changelog\uFF0C\u7BA1\u7406\u8BED\u4E49\u5316\u7248\u672C\u4E0E\u53D1\u5E03\u95E8\u7981\u3002\u4E0E flowsmith \u7684 DONE \u9636\u6BB5\u65E0\u7F1D\u8854\u63A5\uFF0C\u5B8C\u6210\u4ECE\u201C\u4EE3\u7801\u5B8C\u5DE5\u201D\u5230\u201C\u53D1\u5E03\u4E0A\u7EBF\u201D\u7684\u6700\u540E\u4E00\u516C\u91CC\u3002",
+                desc: "标准化发布流程，自动同步多语言 Changelog，管理语义化版本与发布门禁。与 flowsmith 的 DONE 阶段无缝衔接，完成从「代码完工」到「发布上线」的最后一公里。",
                 connects: ["flowsmith", "co-review"]
             },
             {
                 phase: "backlog",
                 label: "Backlog",
                 name: "knowledge-base v2",
-                desc: "\u8DE8\u9879\u76EE\u7684\u7ECF\u9A8C\u6C89\u6DC0\u4E2D\u5FC3\u3002\u5C06\u6240\u6709\u63D2\u4EF6\u7684 lessons.md \u805A\u5408\u4E3A\u5168\u5C40\u8BED\u4E49\u7D22\u5F15\uFF0C\u5229\u7528\u5411\u91CF\u6570\u636E\u5E93\u5B9E\u73B0\u8DE8\u9879\u76EE\u7ECF\u9A8C\u6CE8\u5165\uFF0C\u8BA9\u6BCF\u4E2A\u65B0\u4EFB\u52A1\u90FD\u80FD\u7AD9\u5728\u5386\u53F2\u8096\u8180\u4E0A\u3002",
+                desc: "跨项目的经验沉淀中心。将所有插件的 lessons.md 聚合为全局语义索引，利用向量数据库实现跨项目经验注入，让每个新任务都能站在历史肩膀上。",
                 connects: ["flowsmith", "code-archaeologist", "co-review"]
             },
             {
                 phase: "research",
                 label: "Research",
                 name: "Project Insight UI",
-                desc: "\u4ECE co-review \u7684\u7EC8\u7AEF TUI \u8FDB\u5316\u4E3A\u57FA\u4E8E Web \u7684\u4EA4\u4E92\u5F0F\u4EEA\u8868\u76D8\u3002\u5B9E\u65F6\u5448\u73B0\u4EE3\u7801\u6F14\u8FDB\u66F2\u7EBF\u3001\u56E2\u961F\u5065\u5EB7\u70ED\u529B\u56FE\u3001\u91CD\u6784\u98CE\u9669\u96F7\u8FBE\uFF0C\u6210\u4E3A\u6574\u4E2A\u751F\u6001\u7684\u53EF\u89C6\u5316\u4E2D\u67A2\u3002",
+                desc: "从 co-review 的终端 TUI 进化为基于 Web 的交互式仪表盘。实时呈现代码演进曲线、团队健康热力图、重构风险雷达，成为整个生态的可视化中枢。",
                 connects: ["co-review", "code-archaeologist", "flowsmith"]
             }
         ];
 
-        const Typewriter = ({ text, delay = 50 }) => {
-            const [currentText, setCurrentText] = useState("");
-            const [currentIndex, setCurrentIndex] = useState(0);
+        const Typewriter = ({ text, delay = 30, onDone }) => {
+            const [out, setOut] = useState("");
             useEffect(() => {
-                if (currentIndex < text.length) {
-                    const timeout = setTimeout(() => {
-                        setCurrentText(prev => prev + text[currentIndex]);
-                        setCurrentIndex(prev => prev + 1);
-                    }, delay);
-                    return () => clearTimeout(timeout);
-                }
-            }, [currentIndex, delay, text]);
-            return <span>{currentText}</span>;
+                setOut("");
+                let i = 0;
+                const tick = () => {
+                    setOut(text.slice(0, i + 1));
+                    i++;
+                    if (i < text.length) {
+                        timeout = setTimeout(tick, delay);
+                    } else if (onDone) {
+                        onDone();
+                    }
+                };
+                let timeout = setTimeout(tick, delay);
+                return () => clearTimeout(timeout);
+            }, [text, delay]);
+            return <span>{out}</span>;
+        };
+
+        const PluginCard = ({ p, index, onClick }) => {
+            const ref = useRef(null);
+            const handleMove = useCallback((e) => {
+                const el = ref.current;
+                if (!el) return;
+                const r = el.getBoundingClientRect();
+                el.style.setProperty("--mx", `${e.clientX - r.left}px`);
+                el.style.setProperty("--my", `${e.clientY - r.top}px`);
+            }, []);
+            return (
+                <button
+                    ref={ref}
+                    className="plug-card reveal"
+                    style={{ animationDelay: `${index * 80}ms` }}
+                    onMouseMove={handleMove}
+                    onClick={onClick}
+                    aria-label={`查看 ${p.name} 详情`}
+                >
+                    <div className="plug-head">
+                        <div className="plug-id">
+                            <span className="plug-index">{String(index + 1).padStart(2, "0")} / {String(pluginData.length).padStart(2, "0")}</span>
+                            <h3 className="plug-name">{p.name}</h3>
+                        </div>
+                        <div className="plug-meta-right">
+                            {p.isCore && <span className="plug-core">CORE</span>}
+                            <span className="plug-version">{p.version}</span>
+                        </div>
+                    </div>
+                    <div className="plug-role">{p.role}</div>
+                    <p className="plug-desc">{p.desc}</p>
+                    <div className="plug-foot">
+                        <div className="plug-meta">
+                            <span><strong>{p.commands.length}</strong> cmds</span>
+                            {p.agents > 0 && <span><strong>{p.agents}</strong> agents</span>}
+                            <span><strong>{p.hooks}</strong> hooks</span>
+                        </div>
+                        <div className="plug-tags">
+                            {p.tags.slice(0, 2).map(t => <span className="plug-tag" key={t}>{t}</span>)}
+                        </div>
+                    </div>
+                </button>
+            );
         };
 
         const App = () => {
@@ -941,439 +1387,498 @@
             const [copyText, setCopyText] = useState("Copy");
 
             useEffect(() => {
-                const timers = [
-                    setTimeout(() => setPhase(1), 1000),
-                    setTimeout(() => setPhase(2), 3000)
-                ];
-                return () => timers.forEach(clearTimeout);
+                const t1 = setTimeout(() => setPhase(1), 1400);
+                const t2 = setTimeout(() => setPhase(2), 3400);
+                return () => { clearTimeout(t1); clearTimeout(t2); };
             }, []);
+
+            useEffect(() => {
+                const onKey = (e) => { if (e.key === "Escape") setSelectedId(null); };
+                window.addEventListener("keydown", onKey);
+                return () => window.removeEventListener("keydown", onKey);
+            }, []);
+
+            useEffect(() => {
+                document.body.style.overflow = selectedId ? "hidden" : "";
+                return () => { document.body.style.overflow = ""; };
+            }, [selectedId]);
 
             const selectedPlugin = pluginData.find(p => p.id === selectedId);
             const filteredPlugins = filter === "all" ? pluginData : pluginData.filter(p => p.category === filter);
 
-            const copyToClipboard = (text) => {
+            const copy = (text) => {
                 navigator.clipboard.writeText(text);
-                setCopyText("Copied!");
-                setTimeout(() => setCopyText("Copy"), 2000);
+                setCopyText("Copied");
+                setTimeout(() => setCopyText("Copy"), 1800);
             };
 
-            const categories = ["all", "workflow", "exploration", "collaboration", "quality"];
+            const categories = [
+                { id: "all", label: "all" },
+                { id: "workflow", label: "workflow" },
+                { id: "exploration", label: "exploration" },
+                { id: "collaboration", label: "collaboration" },
+                { id: "quality", label: "quality" }
+            ];
 
             return (
-                <div className="container">
-                    {/* Navigation */}
-                    <nav>
-                        <div className="nav-logo">
-                            <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
-                                <rect x="8" y="8" width="24" height="24" rx="6" stroke="var(--accent)" strokeWidth="3"/>
-                                <circle cx="20" cy="20" r="4" fill="var(--accent)"/>
-                                <path d="M20 4V8M20 32V36M4 20H8M32 20H36" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"/>
-                            </svg>
-                            buddy-hub
-                        </div>
-                        <div className="nav-links">
-                            <a href="#plugins">Plugins</a>
-                            <a href="#ecosystem">Ecosystem</a>
-                            <a href="#vision">Vision</a>
-                            <a href="#roadmap">Roadmap</a>
-                            <a href="https://github.com/KaverinX/buddy-hub">GitHub</a>
-                        </div>
-                    </nav>
-
-                    {/* Hero */}
-                    <header className="hero">
-                        <div className="hero-text">
-                            <h1>SOPs for Claude Code.</h1>
-                            <p className="tagline">
-                                {"\u4E3A Claude \u6CE8\u5165\u5DE5\u7A0B\u5316\u7075\u9B42\u3002\u4E00\u4E2A\u5B8C\u6574\u7684\u63D2\u4EF6\u751F\u6001\u7CFB\u7EDF\uFF0C\u8986\u76D6\u5F00\u53D1\u5168\u751F\u547D\u5468\u671F\u2014\u2014\u4ECE\u89C4\u5212\u3001\u7F16\u7801\u3001\u8003\u53E4\u3001\u5BA1\u67E5\u5230\u56E2\u961F\u534F\u4F5C\uFF0C\u6BCF\u4E2A\u73AF\u8282\u90FD\u6709\u4E13\u5C5E Agent \u62A4\u822A\u3002"}
-                            </p>
-                            <div className="cta-group">
-                                <a href="#plugins" className="btn btn-primary">{"\u63A2\u7D22\u63D2\u4EF6\u5E93"}</a>
-                                <a href="https://github.com/KaverinX/buddy-hub" className="btn btn-secondary">
-                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-                                    {"\u83B7\u53D6\u6E90\u7801"}
-                                </a>
+                <>
+                    <div className="shell">
+                        <nav className="nav" aria-label="主导航">
+                            <a href="#" className="brand">
+                                <span className="brand-mark" aria-hidden="true"></span>
+                                buddy-hub
+                                <span className="brand-tag">marketplace · v0.4</span>
+                            </a>
+                            <div className="nav-links">
+                                <a href="#plugins">plugins</a>
+                                <a href="#ecosystem">ecosystem</a>
+                                <a href="#vision">vision</a>
+                                <a href="#roadmap">roadmap</a>
+                                <a href="https://github.com/KaverinX/buddy-hub" target="_blank" rel="noopener">github ↗</a>
                             </div>
-                        </div>
-                        <div className="terminal-wrap">
-                            <div className="terminal">
-                                <div className="terminal-header">
-                                    <div className="dot red"></div>
-                                    <div className="dot yellow"></div>
-                                    <div className="dot green"></div>
-                                </div>
-                                <div className="line">
-                                    <span className="p">$</span>
-                                    <span className="cmd">
-                                        {phase >= 0 && <Typewriter text="claude plugin marketplace add KaverinX/buddy-hub" delay={30} />}
-                                    </span>
-                                </div>
-                                {phase >= 1 && (
-                                    <div className="line">
-                                        <span className="success">{"\u2713"} Added marketplace: buddy-hub (4 plugins)</span>
-                                    </div>
-                                )}
-                                {phase >= 1 && (
-                                    <div className="line">
-                                        <span className="p">$</span>
-                                        <span className="cmd">
-                                            {phase >= 2 && <Typewriter text="claude plugin install flowsmith@buddy-hub" delay={40} />}
-                                        </span>
-                                    </div>
-                                )}
-                                {phase >= 2 && <div className="line success">{"\u2713"} Installed flowsmith v1.0.0 (6 commands, 4 agents, 3 skills)</div>}
-                                {phase >= 2 && (
-                                    <div className="line">
-                                        <span className="p">$</span>
-                                        <span className="cmd">/sop-init "implement user auth"</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </header>
-
-                    {/* Stats */}
-                    <div className="stats-bar">
-                        <div className="stat-item">
-                            <div className="stat-number">4</div>
-                            <div className="stat-label">{"\u751F\u4EA7\u7EA7\u63D2\u4EF6"}</div>
-                        </div>
-                        <div className="stat-item">
-                            <div className="stat-number">17</div>
-                            <div className="stat-label">{"\u659C\u6760\u547D\u4EE4"}</div>
-                        </div>
-                        <div className="stat-item">
-                            <div className="stat-number">10</div>
-                            <div className="stat-label">{"\u72EC\u7ACB\u4E0A\u4E0B\u6587 Agent"}</div>
-                        </div>
-                        <div className="stat-item">
-                            <div className="stat-number">6</div>
-                            <div className="stat-label">{"\u4E13\u5C5E Skill \u6A21\u677F"}</div>
-                        </div>
+                        </nav>
                     </div>
 
-                    {/* Plugin Center */}
-                    <section id="plugins">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-                            <div className="section-header" style={{ marginBottom: 0 }}>
-                                <span className="section-label">Ecosystem</span>
-                                <h2 className="section-title">{"\u63D2\u4EF6\u4E2D\u5FC3"}</h2>
-                            </div>
-                            <div className="filter-tabs">
-                                {categories.map(c => (
-                                    <button
-                                        key={c}
-                                        className={`filter-tab ${filter === c ? 'active' : ''}`}
-                                        onClick={() => setFilter(c)}
+                    <main id="main" className="shell">
+                        <header className="hero">
+                            <div className="hero-text reveal">
+                                <div className="hero-eyebrow">
+                                    <span>An engineering plugin marketplace</span>
+                                    <span className="ver">/ for Claude Code</span>
+                                </div>
+                                <h1>
+                                    <em>SOPs</em> for<br />Claude Code.
+                                </h1>
+                                <p className="tagline">
+                                    为 Claude 注入工程化灵魂。一个完整的插件生态系统，覆盖开发全生命周期 —— 从规划、编码、考古、审查到团队协作，每个环节都有专属 Agent 护航。
+                                </p>
+                                <div className="cta">
+                                    <a href="#plugins" className="btn btn-primary">探索插件库 →</a>
+                                    <a
+                                        href="https://github.com/KaverinX/buddy-hub"
+                                        target="_blank"
+                                        rel="noopener"
+                                        className="btn btn-ghost"
                                     >
-                                        {c === "all" ? "ALL" : c.toUpperCase()}
-                                    </button>
+                                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                                        </svg>
+                                        Source on GitHub
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div className="reveal" style={{ animationDelay: "180ms" }}>
+                                <div className="terminal" role="presentation">
+                                    <div className="term-head">
+                                        <span className="dot r" aria-hidden="true"></span>
+                                        <span className="dot y" aria-hidden="true"></span>
+                                        <span className="dot g" aria-hidden="true"></span>
+                                        <span className="term-label">~ / claude-code</span>
+                                    </div>
+                                    <div className="term-body">
+                                        <div className="term-line">
+                                            <span className="prompt">$</span>
+                                            <span className="cmd">
+                                                {phase >= 0 && <Typewriter text="claude plugin marketplace add KaverinX/buddy-hub" delay={28} />}
+                                            </span>
+                                        </div>
+                                        {phase >= 1 && (
+                                            <div className="term-line">
+                                                <span className="ok">✓</span> Added marketplace · <span className="dim">buddy-hub (4 plugins)</span>
+                                            </div>
+                                        )}
+                                        {phase >= 1 && (
+                                            <div className="term-line">
+                                                <span className="prompt">$</span>
+                                                <span className="cmd">
+                                                    {phase >= 2 && <Typewriter text="claude plugin install flowsmith@buddy-hub" delay={32} />}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {phase >= 2 && (
+                                            <div className="term-line">
+                                                <span className="ok">✓</span> Installed flowsmith v1.0.0 · <span className="dim">6 cmds, 4 agents, 3 skills</span>
+                                            </div>
+                                        )}
+                                        {phase >= 2 && (
+                                            <div className="term-line">
+                                                <span className="prompt">$</span>
+                                                <span className="cmd">/sop-init "implement user auth"</span>
+                                                <span className="cursor"></span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </header>
+
+                        {/* ─── Strip ───────────────────────────── */}
+                        <section className="strip" aria-label="数据概览">
+                            <div className="stat">
+                                <div className="stat-num"><em>4</em></div>
+                                <div className="stat-label">production plugins</div>
+                            </div>
+                            <div className="strip-divider"></div>
+                            <div className="stat">
+                                <div className="stat-num">17</div>
+                                <div className="stat-label">slash commands</div>
+                            </div>
+                            <div className="strip-divider"></div>
+                            <div className="stat">
+                                <div className="stat-num">10</div>
+                                <div className="stat-label">isolated agents</div>
+                            </div>
+                            <div className="strip-divider"></div>
+                            <div className="stat">
+                                <div className="stat-num">6</div>
+                                <div className="stat-label">skill templates</div>
+                            </div>
+                        </section>
+
+                        {/* ─── Plugins ─────────────────────────── */}
+                        <section id="plugins" aria-labelledby="sec-plugins">
+                            <div className="sec-head">
+                                <div className="sec-tag">
+                                    <span className="num">— 01</span>
+                                    <span className="label">Marketplace</span>
+                                </div>
+                                <div>
+                                    <h2 id="sec-plugins" className="sec-title">
+                                        四个插件，<em>覆盖</em>开发全周期。
+                                    </h2>
+                                    <p className="sec-sub">
+                                        一个核心编排器 + 三个专业插件，各自独立可用，组合使用时通过 Hook 与共享上下文产生化学反应。
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="plug-toolbar">
+                                <div className="tabs" role="tablist" aria-label="插件分类筛选">
+                                    {categories.map(c => (
+                                        <button
+                                            key={c.id}
+                                            className={`tab ${filter === c.id ? 'active' : ''}`}
+                                            role="tab"
+                                            aria-selected={filter === c.id}
+                                            onClick={() => setFilter(c.id)}
+                                        >
+                                            {c.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="plug-count">
+                                    showing <strong>{filteredPlugins.length}</strong> of <strong>{pluginData.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="plug-grid">
+                                {filteredPlugins.map((p, i) => (
+                                    <PluginCard
+                                        key={p.id}
+                                        p={p}
+                                        index={i}
+                                        onClick={() => setSelectedId(p.id)}
+                                    />
                                 ))}
                             </div>
-                        </div>
+                        </section>
 
-                        <div className="plugin-grid">
-                            {filteredPlugins.map(p => (
-                                <div className={`plugin-card ${p.isCore ? 'core-plugin' : ''}`} key={p.id} onClick={() => setSelectedId(p.id)}>
-                                    <div className="plugin-top">
-                                        <div className="plugin-icon">{p.icon}</div>
-                                        <span className="plugin-version">{p.version}</span>
-                                    </div>
-                                    <h3 className="plugin-name">{p.name}</h3>
-                                    <div className="plugin-role">{p.role}</div>
-                                    <p className="plugin-desc">{p.desc}</p>
-                                    <div className="plugin-meta-row">
-                                        <span className="plugin-meta-badge">
-                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5zM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11z"/></svg>
-                                            {p.commands.length} cmds
-                                        </span>
-                                        {p.agents > 0 && (
-                                            <span className="plugin-meta-badge">
-                                                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path fillRule="evenodd" d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/><path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
-                                                {p.agents} agents
-                                            </span>
-                                        )}
-                                        <span className="plugin-meta-badge">
-                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 2A3.5 3.5 0 0 0 2 5.5v5A3.5 3.5 0 0 0 5.5 14h5a3.5 3.5 0 0 0 3.5-3.5V8a.5.5 0 0 1 1 0v2.5a4.5 4.5 0 0 1-4.5 4.5h-5A4.5 4.5 0 0 1 1 10.5v-5A4.5 4.5 0 0 1 5.5 1H8a.5.5 0 0 1 0 1H5.5z"/><path d="M16 3a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
-                                            {p.hooks} hooks
-                                        </span>
-                                    </div>
-                                    <div className="tag-row">
-                                        {p.tags.map(t => <span className="tag" key={t}>{t}</span>)}
-                                    </div>
+                        {/* ─── Ecosystem ───────────────────────── */}
+                        <section id="ecosystem" className="eco-section" aria-labelledby="sec-eco">
+                            <div className="sec-head">
+                                <div className="sec-tag">
+                                    <span className="num">— 02</span>
+                                    <span className="label">Architecture</span>
                                 </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Ecosystem Architecture */}
-                    <section id="ecosystem" className="ecosystem-section">
-                        <div className="section-header">
-                            <span className="section-label">Architecture</span>
-                            <h2 className="section-title">{"\u63D2\u4EF6\u751F\u6001\u67B6\u6784"}</h2>
-                            <p className="section-subtitle">{"\u4EE5 flowsmith \u4E3A\u6838\u5FC3\u7F16\u6392\u5668\uFF0C\u4E09\u4E2A\u4E13\u4E1A\u63D2\u4EF6\u5206\u5C42\u534F\u4F5C\u3002\u6BCF\u4E2A\u63D2\u4EF6\u53EF\u72EC\u7ACB\u4F7F\u7528\uFF0C\u7EC4\u5408\u4F7F\u7528\u65F6\u901A\u8FC7 Hook \u4E0E\u5171\u4EAB\u77E5\u8BC6\u5E93\u4EA7\u751F\u5316\u5B66\u53CD\u5E94\u3002"}</p>
-                        </div>
-                        <div className="ecosystem-diagram">
-                            {/* Core */}
-                            <div className="eco-core">
-                                <div className="eco-core-box">
-                                    <h4>{"\u{1F528} flowsmith"}</h4>
-                                    <p>{"\u72B6\u6001\u673A\u7F16\u6392\u5668 \u00B7 PLANNING \u2192 ARCH \u2192 IMPL \u2192 OPT \u2192 REVIEW \u2192 DONE"}</p>
+                                <div>
+                                    <h2 id="sec-eco" className="sec-title">
+                                        以 <em>flowsmith</em> 为核心编排器，分层协作。
+                                    </h2>
+                                    <p className="sec-sub">
+                                        每个插件可独立使用，组合使用时通过 Hook 与共享知识库产生化学反应。一个核心 + 三个分支 + 一个正交层。
+                                    </p>
                                 </div>
-                                <div className="eco-connector-v"></div>
-                                <div className="eco-hub">{"\u2193 Hook \u89E6\u53D1 + \u4E0A\u4E0B\u6587\u5171\u4EAB \u2193"}</div>
                             </div>
-                            <div className="eco-connector-spread"></div>
 
-                            {/* Branches */}
-                            <div className="eco-branches">
-                                <div className="eco-branch">
-                                    <div className="eco-branch-box">
-                                        <div className="eco-branch-icon">{"\u{1F50D}"}</div>
-                                        <div className="eco-branch-name">code-archaeologist</div>
-                                        <div className="eco-branch-role">{"\u9057\u7559\u4EE3\u7801\u8003\u53E4"}</div>
-                                        <div className="eco-branch-arrow">
-                                            <span className="dir">{"\u2190"}</span> {"\u63A5\u6536\u91CD\u6784\u610F\u56FE"} <span className="dir">{"\u2192"}</span> {"\u6CE8\u5165\u7EA6\u675F"}
+                            <div className="eco-frame">
+                                <div className="eco-core">
+                                    <h4><em>flowsmith</em> · core orchestrator</h4>
+                                    <p>
+                                        <span>PLANNING</span> → <span>ARCH</span> → <span>IMPL</span> → <span>OPT</span> → <span>REVIEW</span> → <span>DONE</span>
+                                    </p>
+                                </div>
+
+                                <div className="eco-trunk">
+                                    <div className="v-line"></div>
+                                    <div className="eco-trunk-label">↓ Hook 触发 <span>+</span> 上下文共享 ↓</div>
+                                    <div className="v-line"></div>
+                                </div>
+
+                                <div className="eco-bus" aria-hidden="true"></div>
+
+                                <div className="eco-branches">
+                                    <div className="eco-branch">
+                                        <div className="eco-branch-card">
+                                            <div className="eco-branch-name">code-archaeologist</div>
+                                            <div className="eco-branch-role">Legacy Analyst</div>
+                                            <div className="eco-branch-arrow">
+                                                <span className="dir">←</span> 接收重构意图
+                                                <span className="dir">→</span> 注入红线约束
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="eco-branch">
+                                        <div className="eco-branch-card">
+                                            <div className="eco-branch-name">co-review</div>
+                                            <div className="eco-branch-role">Team Inspector</div>
+                                            <div className="eco-branch-arrow">
+                                                <span className="dir">←</span> 读取 .sop/ + .archaeology/
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="eco-branch">
+                                        <div className="eco-branch-card">
+                                            <div className="eco-branch-name">formatter</div>
+                                            <div className="eco-branch-role">Style Guardian</div>
+                                            <div className="eco-branch-arrow">
+                                                <span className="dir">⊥</span> 正交层独立运行
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="eco-branch">
-                                    <div className="eco-branch-box">
-                                        <div className="eco-branch-icon">{"\u{1F465}"}</div>
-                                        <div className="eco-branch-name">co-review</div>
-                                        <div className="eco-branch-role">{"\u56E2\u961F\u534F\u4F5C\u5BA1\u67E5"}</div>
-                                        <div className="eco-branch-arrow">
-                                            <span className="dir">{"\u2190"}</span> {"\u8BFB\u53D6 .sop/ + .archaeology/"}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="eco-branch">
-                                    <div className="eco-branch-box">
-                                        <div className="eco-branch-icon">{"\u{1F3A8}"}</div>
-                                        <div className="eco-branch-name">formatter</div>
-                                        <div className="eco-branch-role">{"\u4EE3\u7801\u98CE\u683C\u5B88\u536B"}</div>
-                                        <div className="eco-branch-arrow">
-                                            {"\u{1F7F0}"} {"\u6B63\u4EA4\u5C42\uFF0C\u72EC\u7ACB\u8FD0\u884C"}
-                                        </div>
-                                    </div>
+
+                                <div className="eco-shared">
+                                    <div className="eco-shared-item"><span className="key">→</span> .sop/lessons.md · 共享知识库，所有插件读写</div>
+                                    <div className="eco-shared-item"><span className="key">→</span> .archaeology/report.md · 红线清单跨插件引用</div>
                                 </div>
                             </div>
+                        </section>
 
-                            {/* Shared Layer */}
-                            <div className="eco-shared-layer">
-                                <div className="eco-shared-item"><span>{"\u{1F4DA}"}</span> .sop/lessons.md {"\u2014 \u5171\u4EAB\u77E5\u8BC6\u5E93\uFF0C\u6240\u6709\u63D2\u4EF6\u8BFB\u5199"}</div>
-                                <div className="eco-shared-item"><span>{"\u{1F6A9}"}</span> .archaeology/report.md {"\u2014 \u7EA2\u7EBF\u6E05\u5355\u8DE8\u63D2\u4EF6\u5F15\u7528"}</div>
+                        {/* ─── Vision ──────────────────────────── */}
+                        <section id="vision" className="vision-section" aria-labelledby="sec-vision">
+                            <div className="sec-head">
+                                <div className="sec-tag">
+                                    <span className="num">— 03</span>
+                                    <span className="label">Manifesto</span>
+                                </div>
+                                <div>
+                                    <h2 id="sec-vision" className="sec-title">
+                                        AI 编程不应是「更快地写出更多 Bug」。
+                                    </h2>
+                                    <p className="sec-sub">
+                                        我们相信工程纪律比生成速度更重要。这是支撑整个生态的六条信条。
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    </section>
 
-                    {/* Vision */}
-                    <section id="vision" className="vision-section">
-                        <div className="section-header">
-                            <span className="section-label">Why buddy-hub</span>
-                            <h2 className="section-title">{"\u5B8F\u4F1F\u613F\u666F"}</h2>
-                            <p className="section-subtitle">{"\u6211\u4EEC\u76F8\u4FE1 AI \u7F16\u7A0B\u4E0D\u5E94\u8BE5\u662F\u201C\u66F4\u5FEB\u5730\u5199\u51FA\u66F4\u591A Bug\u201D\uFF0C\u800C\u662F\u201C\u7528\u5DE5\u7A0B\u7EAA\u5F8B\u6253\u9020\u771F\u6B63\u53EF\u9760\u7684\u8F6F\u4EF6\u201D\u3002"}</p>
-                        </div>
-                        <div className="vision-grid">
-                            <div className="vision-card">
-                                <div className="vision-number">01</div>
-                                <h4>{"\u6D41\u7A0B\u5373\u62A4\u680F"}</h4>
-                                <p>{"\u72B6\u6001\u673A\u5F3A\u5236\u201C\u5148\u601D\u8003\u518D\u7F16\u7801\u201D\u3002\u4ECE\u9700\u6C42\u5206\u89E3\u3001\u67B6\u6784\u8BBE\u8BA1\u5230\u591A\u5C42\u5BA1\u67E5\uFF0C\u6BCF\u4E2A\u9636\u6BB5\u90FD\u6709\u660E\u786E\u7684\u8F93\u5165\u8F93\u51FA\u5951\u7EA6\uFF0C\u7981\u6B62\u8DF3\u8FC7\u3002"}</p>
+                            <div className="vision-grid">
+                                {[
+                                    { num: "01", title: "流程即护栏", desc: "状态机强制「先思考再编码」。从需求分解、架构设计到多层审查，每个阶段都有明确的输入输出契约，禁止跳过。" },
+                                    { num: "02", title: "知识会沉淀", desc: "lessons.md 不是日志，是活的知识库。每次任务完成、每次审查发现、每次考古结论都会回流，让下一次任务站在历史肩膀上。" },
+                                    { num: "03", title: "多 Agent 协作", desc: "每个分析维度都由独立上下文的 Agent 执行，避免分析污染。安全审查不会被优化建议干扰，团队分析不会被个人偏见污染。" },
+                                    { num: "04", title: "隐私优先", desc: "团队协作分析严格隔离个人数据。不做横向对比、不判断态度、不泄露他人信息——让工具服务于成长，而非制造焦虑。" },
+                                    { num: "05", title: "考古而非猛冲", desc: "重构前先理解——为什么当初这样写？谁在依赖它？哪些是必要复杂性？这套思考框架能预防 90% 的重构事故。" },
+                                    { num: "06", title: "开发全周期", desc: "从「想法」到「上线」的完整链路：规划 → 设计 → 编码 → 格式化 → 考古 → 审查 → 团队协作 → 发布。每个环节都有插件护航。" }
+                                ].map((v, i) => (
+                                    <article
+                                        className="vision-item reveal"
+                                        key={v.num}
+                                        style={{ animationDelay: `${i * 70}ms` }}
+                                    >
+                                        <div className="v-num">{v.num}</div>
+                                        <h3 className="v-title">{v.title}</h3>
+                                        <p className="v-desc">{v.desc}</p>
+                                    </article>
+                                ))}
                             </div>
-                            <div className="vision-card">
-                                <div className="vision-number">02</div>
-                                <h4>{"\u77E5\u8BC6\u4F1A\u6C89\u6DC0"}</h4>
-                                <p>{"lessons.md \u4E0D\u662F\u65E5\u5FD7\uFF0C\u662F\u6D3B\u7684\u77E5\u8BC6\u5E93\u3002\u6BCF\u6B21\u4EFB\u52A1\u5B8C\u6210\u3001\u6BCF\u6B21\u5BA1\u67E5\u53D1\u73B0\u3001\u6BCF\u6B21\u8003\u53E4\u7ED3\u8BBA\u90FD\u4F1A\u56DE\u6D41\uFF0C\u8BA9\u4E0B\u4E00\u6B21\u4EFB\u52A1\u7AD9\u5728\u5386\u53F2\u8096\u8180\u4E0A\u3002"}</p>
-                            </div>
-                            <div className="vision-card">
-                                <div className="vision-number">03</div>
-                                <h4>{"\u591A Agent \u534F\u4F5C"}</h4>
-                                <p>{"\u6BCF\u4E2A\u5206\u6790\u7EF4\u5EA6\u90FD\u7531\u72EC\u7ACB\u4E0A\u4E0B\u6587\u7684 Agent \u6267\u884C\uFF0C\u907F\u514D\u5206\u6790\u6C61\u67D3\u3002\u5B89\u5168\u5BA1\u67E5\u4E0D\u4F1A\u88AB\u4F18\u5316\u5EFA\u8BAE\u5E72\u6270\uFF0C\u56E2\u961F\u5206\u6790\u4E0D\u4F1A\u88AB\u4E2A\u4EBA\u504F\u89C1\u6C61\u67D3\u3002"}</p>
-                            </div>
-                            <div className="vision-card">
-                                <div className="vision-number">04</div>
-                                <h4>{"\u9690\u79C1\u4F18\u5148"}</h4>
-                                <p>{"\u56E2\u961F\u534F\u4F5C\u5206\u6790\u4E25\u683C\u9694\u79BB\u4E2A\u4EBA\u6570\u636E\u3002\u4E0D\u505A\u6A2A\u5411\u5BF9\u6BD4\u3001\u4E0D\u5224\u65AD\u6001\u5EA6\u3001\u4E0D\u6CC4\u9732\u4ED6\u4EBA\u4FE1\u606F\u2014\u2014\u8BA9\u5DE5\u5177\u670D\u52A1\u4E8E\u6210\u957F\uFF0C\u800C\u975E\u5236\u9020\u7126\u8651\u3002"}</p>
-                            </div>
-                            <div className="vision-card">
-                                <div className="vision-number">05</div>
-                                <h4>{"\u8003\u53E4\u800C\u975E\u731B\u51B2"}</h4>
-                                <p>{"\u91CD\u6784\u524D\u5148\u7406\u89E3\u2014\u2014\u4E3A\u4EC0\u4E48\u5F53\u521D\u8FD9\u6837\u5199\uFF1F\u8C01\u5728\u4F9D\u8D56\u5B83\uFF1F\u54EA\u4E9B\u662F\u5FC5\u8981\u590D\u6742\u6027\uFF1F\u8FD9\u5957\u601D\u8003\u6846\u67B6\u80FD\u9884\u9632 90% \u7684\u91CD\u6784\u4E8B\u6545\u3002"}</p>
-                            </div>
-                            <div className="vision-card">
-                                <div className="vision-number">06</div>
-                                <h4>{"\u5F00\u53D1\u5168\u5468\u671F"}</h4>
-                                <p>{"\u4ECE\u201C\u60F3\u6CD5\u201D\u5230\u201C\u4E0A\u7EBF\u201D\u7684\u5B8C\u6574\u94FE\u8DEF: \u89C4\u5212 \u2192 \u8BBE\u8BA1 \u2192 \u7F16\u7801 \u2192 \u683C\u5F0F\u5316 \u2192 \u8003\u53E4 \u2192 \u5BA1\u67E5 \u2192 \u56E2\u961F\u534F\u4F5C \u2192 \u53D1\u5E03\u3002\u6BCF\u4E2A\u73AF\u8282\u90FD\u6709\u63D2\u4EF6\u62A4\u822A\u3002"}</p>
-                            </div>
-                        </div>
-                    </section>
+                        </section>
 
-                    {/* Roadmap */}
-                    <section id="roadmap" className="roadmap-section">
-                        <div className="section-header">
-                            <span className="section-label">What's Next</span>
-                            <h2 className="section-title">{"\u540E\u7EED\u89C4\u5212"}</h2>
-                            <p className="section-subtitle">{"\u6BCF\u4E2A\u65B0\u63D2\u4EF6\u90FD\u4E0D\u662F\u5B64\u5C9B\uFF0C\u800C\u662F\u4E0E\u73B0\u6709\u751F\u6001\u7684\u6DF1\u5EA6\u878D\u5408\u3002\u5B83\u4EEC\u5C06\u8865\u5168\u4ECE\u201C\u4EE3\u7801\u5B8C\u5DE5\u201D\u5230\u201C\u77E5\u8BC6\u6C89\u6DC0\u201D\u7684\u6700\u540E\u51E0\u5757\u62FC\u56FE\u3002"}</p>
-                        </div>
-                        <div className="roadmap-container">
-                            <div className="roadmap-timeline">
+                        {/* ─── Roadmap ─────────────────────────── */}
+                        <section id="roadmap" className="roadmap-section" aria-labelledby="sec-roadmap">
+                            <div className="sec-head">
+                                <div className="sec-tag">
+                                    <span className="num">— 04</span>
+                                    <span className="label">What's Next</span>
+                                </div>
+                                <div>
+                                    <h2 id="sec-roadmap" className="sec-title">
+                                        下一批插件，<em>补全</em>最后几块拼图。
+                                    </h2>
+                                    <p className="sec-sub">
+                                        每个新插件都不是孤岛，而是与现有生态的深度融合。它们将补全从「代码完工」到「知识沉淀」的最后一公里。
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="roadmap-frame">
                                 {roadmapData.map((item, idx) => (
-                                    <div className="roadmap-item" key={idx}>
+                                    <div className="roadmap-row" key={idx}>
                                         <div className={`roadmap-phase ${item.phase}`}>{item.label}</div>
-                                        <div className="roadmap-dot-col">
-                                            <div className={`roadmap-dot ${item.phase}`}></div>
-                                            {idx < roadmapData.length - 1 && <div className="roadmap-line"></div>}
+                                        <div className="roadmap-marker">
+                                            <span className={`roadmap-dot ${item.phase}`} aria-hidden="true"></span>
                                         </div>
                                         <div className="roadmap-content">
                                             <h4>{item.name}</h4>
                                             <p>{item.desc}</p>
                                             <div className="roadmap-connects">
                                                 {item.connects.map(c => (
-                                                    <span className="roadmap-connect-tag" key={c}>{"\u2194"} {c}</span>
+                                                    <span className="roadmap-connect" key={c}>
+                                                        <span className="arr">↔</span>{c}
+                                                    </span>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    </main>
 
-                    {/* Footer */}
-                    <footer className="footer-grid">
-                        <div className="footer-brand">
-                            <h2 style={{ fontWeight: 800 }}>buddy-hub</h2>
-                            <p style={{ color: '#555', marginTop: '16px', lineHeight: 1.8 }}>
-                                {"\u4E13\u6CE8\u4E8E\u63D0\u5347 Claude Code \u751F\u4EA7\u529B\u7684\u63D2\u4EF6\u751F\u6001\u7CFB\u7EDF\u3002\u7531\u5F00\u53D1\u8005\u4E3A\u5F00\u53D1\u8005\u6253\u9020\uFF0C\u65E8\u5728\u5EFA\u7ACB\u66F4\u4E25\u8C28\u3001\u66F4\u9AD8\u6548\u7684 AI \u5F00\u53D1\u8303\u5F0F\u3002"}
-                            </p>
-                            <p style={{ color: '#333', marginTop: '24px', fontSize: '13px' }}>{"\u00A9 2026 Velpro \u00B7 MIT License"}</p>
+                    {/* ─── Footer ──────────────────────────── */}
+                    <footer className="shell">
+                        <div className="footer">
+                            <div className="foot-brand">
+                                <h3>buddy-hub<em>.</em></h3>
+                                <p>专注于提升 Claude Code 生产力的插件生态系统。由开发者为开发者打造，旨在建立更严谨、更高效的 AI 开发范式。</p>
+                            </div>
+                            <div className="foot-col">
+                                <h5>Marketplace</h5>
+                                <ul>
+                                    <li><a href="#plugins">Browse Plugins</a></li>
+                                    <li><a href="#ecosystem">Ecosystem Map</a></li>
+                                    <li><a href="#roadmap">Roadmap</a></li>
+                                    <li><a href="https://github.com/KaverinX/buddy-hub/issues" target="_blank" rel="noopener">Submit Plugin ↗</a></li>
+                                </ul>
+                            </div>
+                            <div className="foot-col">
+                                <h5>Contact</h5>
+                                <ul>
+                                    <li><a href="https://github.com/KaverinX" target="_blank" rel="noopener">GitHub Profile ↗</a></li>
+                                    <li><a href="mailto:xvelpro8@gmail.com">Email Velpro</a></li>
+                                    <li><a href="https://github.com/KaverinX/buddy-hub" target="_blank" rel="noopener">Documentation ↗</a></li>
+                                </ul>
+                            </div>
                         </div>
-                        <div className="footer-links">
-                            <h5>Marketplace</h5>
-                            <ul>
-                                <li><a href="#plugins">Browse Plugins</a></li>
-                                <li><a href="#ecosystem">Ecosystem Map</a></li>
-                                <li><a href="https://github.com/KaverinX/buddy-hub/issues">Submit Plugin</a></li>
-                            </ul>
-                        </div>
-                        <div className="footer-links">
-                            <h5>Contact</h5>
-                            <ul>
-                                <li><a href="https://github.com/KaverinX">GitHub Profile</a></li>
-                                <li><a href="mailto:xvelpro8@gmail.com">Email Velpro</a></li>
-                                <li><a href="https://github.com/KaverinX/buddy-hub">Documentation</a></li>
-                            </ul>
+                        <div className="foot-bar">
+                            <span>© 2026 Velpro · MIT License</span>
+                            <span>Built with intent · Not generated</span>
                         </div>
                     </footer>
 
-                    {/* Drawer */}
-                    <div className={`drawer-overlay ${selectedId ? 'active' : ''}`} onClick={() => setSelectedId(null)}></div>
-                    <div className={`drawer ${selectedId ? 'active' : ''}`}>
+                    {/* ─── Drawer ──────────────────────────── */}
+                    <div
+                        className={`drawer-overlay ${selectedId ? 'active' : ''}`}
+                        onClick={() => setSelectedId(null)}
+                        aria-hidden="true"
+                    ></div>
+                    <aside
+                        className={`drawer ${selectedId ? 'active' : ''}`}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="drawer-title"
+                    >
                         {selectedPlugin && (
                             <>
-                                <button className="drawer-close" onClick={() => setSelectedId(null)}>{"\u00D7"}</button>
-                                <div className="drawer-header">
-                                    <div className="drawer-icon">{selectedPlugin.icon}</div>
-                                    <h2 className="drawer-title">{selectedPlugin.name}</h2>
-                                    <div className="drawer-role">{selectedPlugin.role}</div>
-                                    <p style={{ color: '#888', fontSize: '1rem', lineHeight: 1.7 }}>{selectedPlugin.desc}</p>
-                                </div>
+                                <button
+                                    className="drawer-close"
+                                    onClick={() => setSelectedId(null)}
+                                    aria-label="关闭详情面板"
+                                >×</button>
 
-                                {/* Architecture Stats */}
-                                <div className="drawer-section">
+                                <div className="drawer-eyebrow">{selectedPlugin.isCore ? "Core Plugin · " : ""}{selectedPlugin.category}</div>
+                                <h2 id="drawer-title" className="drawer-title">{selectedPlugin.name}</h2>
+                                <div className="drawer-role">{selectedPlugin.role}</div>
+                                <p className="drawer-desc">{selectedPlugin.desc}</p>
+
+                                <div className="drawer-block">
                                     <h4>Architecture</h4>
-                                    <div className="drawer-arch-row">
-                                        <div className="drawer-arch-item">
-                                            <div className="drawer-arch-number">{selectedPlugin.commands.length}</div>
-                                            <div className="drawer-arch-label">Commands</div>
+                                    <div className="drawer-arch">
+                                        <div className="drawer-arch-cell">
+                                            <div className="drawer-arch-num">{selectedPlugin.commands.length}</div>
+                                            <div className="drawer-arch-label">commands</div>
                                         </div>
-                                        <div className="drawer-arch-item">
-                                            <div className="drawer-arch-number">{selectedPlugin.agents}</div>
-                                            <div className="drawer-arch-label">Agents</div>
+                                        <div className="drawer-arch-cell">
+                                            <div className="drawer-arch-num">{selectedPlugin.agents}</div>
+                                            <div className="drawer-arch-label">agents</div>
                                         </div>
-                                        <div className="drawer-arch-item">
-                                            <div className="drawer-arch-number">{selectedPlugin.hooks}</div>
-                                            <div className="drawer-arch-label">Hooks</div>
+                                        <div className="drawer-arch-cell">
+                                            <div className="drawer-arch-num">{selectedPlugin.hooks}</div>
+                                            <div className="drawer-arch-label">hooks</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Install */}
-                                <div className="drawer-section">
+                                <div className="drawer-block">
                                     <h4>Installation</h4>
-                                    <div className="install-box">
-                                        <code className="install-code">{selectedPlugin.install}</code>
-                                        <button className="btn-copy" onClick={() => copyToClipboard(selectedPlugin.install)}>{copyText}</button>
+                                    <div className="install">
+                                        <code>{selectedPlugin.install}</code>
+                                        <button onClick={() => copy(selectedPlugin.install)}>{copyText}</button>
                                     </div>
                                 </div>
 
-                                {/* Commands */}
-                                <div className="drawer-section">
+                                <div className="drawer-block">
                                     <h4>Commands</h4>
-                                    <div className="drawer-commands-grid">
-                                        {selectedPlugin.commands.map((cmd, i) => (
-                                            <div className="drawer-cmd" key={i}>
-                                                <span className="name">{cmd}</span>
-                                            </div>
+                                    <div className="drawer-cmds">
+                                        {selectedPlugin.commands.map(cmd => (
+                                            <div className="drawer-cmd" key={cmd}>{cmd}</div>
                                         ))}
                                     </div>
                                 </div>
 
-                                {/* Features */}
-                                <div className="drawer-section">
+                                <div className="drawer-block">
                                     <h4>Core Features</h4>
-                                    <ul className="drawer-feature-list">
-                                        {selectedPlugin.features.map((f, i) => (
-                                            <li key={i}>{f}</li>
-                                        ))}
+                                    <ul className="drawer-feat">
+                                        {selectedPlugin.features.map((f, i) => <li key={i}>{f}</li>)}
                                     </ul>
                                 </div>
 
-                                {/* Dependencies */}
-                                <div className="drawer-section">
+                                <div className="drawer-block">
                                     <h4>Ecosystem Connections</h4>
                                     <div className="drawer-deps">
-                                        {selectedPlugin.dependencies.map((dep, i) => (
-                                            <div className="drawer-dep-item" key={i}>
-                                                <span className="drawer-dep-arrow">
-                                                    {dep.direction === "drives" && "\u2192"}
-                                                    {dep.direction === "receives" && "\u2190"}
-                                                    {dep.direction === "injects" && "\u2192"}
-                                                    {dep.direction === "feeds" && "\u2192"}
-                                                    {dep.direction === "shared" && "\u21C4"}
-                                                    {dep.direction === "orthogonal" && "\u{1F7F0}"}
-                                                </span>
-                                                <span className="drawer-dep-name">{dep.target}</span>
-                                                <span>{dep.desc}</span>
-                                            </div>
-                                        ))}
+                                        {selectedPlugin.dependencies.map((dep, i) => {
+                                            const arr = {
+                                                drives: "→", receives: "←", injects: "→",
+                                                feeds: "→", shared: "⇄", orthogonal: "⊥"
+                                            }[dep.direction] || "→";
+                                            return (
+                                                <div className="drawer-dep" key={i}>
+                                                    <span className="dir">{arr}</span>
+                                                    <span className="target">{dep.target}</span>
+                                                    <span className="desc">{dep.desc}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
-                                {/* Metadata */}
-                                <div className="drawer-section">
+                                <div className="drawer-block">
                                     <h4>Metadata</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                                    <div className="drawer-meta-grid">
                                         <div>
-                                            <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', marginBottom: '4px' }}>Category</div>
-                                            <div style={{ fontSize: '14px', color: '#888' }}>{selectedPlugin.category}</div>
+                                            <div className="drawer-meta-key">Category</div>
+                                            <div className="drawer-meta-val">{selectedPlugin.category}</div>
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: '10px', color: '#444', textTransform: 'uppercase', marginBottom: '4px' }}>Version</div>
-                                            <div style={{ fontSize: '14px', color: '#888' }}>{selectedPlugin.version}</div>
+                                            <div className="drawer-meta-key">Version</div>
+                                            <div className="drawer-meta-val">{selectedPlugin.version}</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ marginTop: '40px', paddingTop: '40px', borderTop: '1px solid var(--card-border)' }}>
-                                    <a href={`https://github.com/KaverinX/buddy-hub/tree/main/plugins/${selectedPlugin.id}`} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
-                                        {"\u67E5\u770B\u8BE6\u7EC6\u6587\u6863 & \u6E90\u4EE3\u7801"}
-                                    </a>
-                                </div>
+                                <a
+                                    href={`https://github.com/KaverinX/buddy-hub/tree/main/plugins/${selectedPlugin.id}`}
+                                    target="_blank"
+                                    rel="noopener"
+                                    className="btn btn-ghost"
+                                    style={{ width: '100%', justifyContent: 'center', marginTop: '24px' }}
+                                >
+                                    查看详细文档 &amp; 源代码 ↗
+                                </a>
                             </>
                         )}
-                    </div>
-                </div>
+                    </aside>
+                </>
             );
         };
 
