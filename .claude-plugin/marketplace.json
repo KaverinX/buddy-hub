@@ -40,6 +40,14 @@
       "version": "1.0.0",
       "category": "collaboration",
       "tags": ["team-review", "git-analysis", "multi-author", "merge-strategy", "tui", "flowsmith-integration", "archaeology-integration"]
+    },
+    {
+      "name": "context-keeper",
+      "source": "./plugins/context-keeper",
+      "description": "buddy-hub 的地基插件。提供项目级事件流（events.jsonl）+ 物化视图（entities/）+ SkillBus v0 标准事件协议，把分散插件织成可查询、可追溯的能力星系。非侵入式 mirror hook 自动捕获 flowsmith / code-archaeologist / co-review 的状态变更，旧插件无需修改即可融入。",
+      "version": "1.0.0",
+      "category": "infrastructure",
+      "tags": ["context", "knowledge-graph", "event-bus", "skill-bus", "mirror", "infrastructure", "buddy-hub-foundation"]
     }
   ]
 }

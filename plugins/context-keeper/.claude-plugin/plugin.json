@@ -1,0 +1,21 @@
+{
+  "name": "context-keeper",
+  "version": "1.0.0",
+  "description": "项目知识图谱底座。所有 plugin 共享的事件流 + 物化视图 + 标准化事件协议（SkillBus v0）。非侵入式 mirror hook 自动捕获 flowsmith / code-archaeologist / co-review 的产出，把分散插件织成一张可查询的能力星系。",
+  "author": {
+    "name": "Velpro",
+    "email": "xvelpro8@gmail.com"
+  },
+  "homepage": "https://github.com/Velpro/buddy-hub",
+  "repository": "https://github.com/Velpro/buddy-hub",
+  "license": "MIT",
+  "keywords": [
+    "context",
+    "knowledge-graph",
+    "event-bus",
+    "skill-bus",
+    "mirror",
+    "buddy-hub",
+    "infrastructure"
+  ]
+}
