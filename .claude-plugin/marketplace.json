@@ -13,7 +13,7 @@
       "name": "flowsmith",
       "source": "./plugins/flowsmith",
       "description": "状态机驱动的开发 SOP 工作流。规划 → 架构 → 编码 → 优化 → 三层并行审查 → 知识沉淀。",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "workflow",
       "tags": ["sop", "state-machine", "multi-agent", "code-review"]
     },

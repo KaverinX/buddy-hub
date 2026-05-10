@@ -106,6 +106,122 @@ interface {InterfaceName} {
 
 ---
 
+## changelog.md 格式
+
+> 由 implementation-guide skill 在 IMPLEMENTATION 阶段维护，每完成一个逻辑变更批次追加一条。
+> 通过 /sop-diff 命令查看带备注的 diff。
+
+### 文件头
+
+```markdown
+# 变更日志（Change Log）
+
+> task_id: {state.task_id}
+> task: {state.task_summary}
+> base_branch: {state.git_context.base_branch}
+> head_branch: {state.git_context.head_branch}
+> worktree: {state.git_context.worktree_path}
+> 由 implementation-guide 中"变更日志纪律"在实施阶段维护
+> 通过 /sop-diff 查看带备注的 diff
+
+---
+```
+
+### 单条变更记录（CR-N）
+
+```markdown
+## CR-{n} — {一句话标题}
+
+- timestamp: {ISO8601}
+- type: create | modify | delete | refactor | fix
+- subtask: {plan.md 中子任务编号，如 1.2；无则填 -}
+- adr: {arch.md 中 ADR 编号，如 ADR-2；无则填 -}
+- fixes_issue: {C-x（仅 iteration > 1 修复 Critical 时填）}
+- backfilled: {true，仅由 /sop-diff --backfill 生成时填；正常实施写的 CR 不需要此字段}
+- source_commits: {abc1234, def5678（仅 backfilled CR 用于追溯来源 commit）}
+- files:
+  - {path1} ({新建 / 修改 / 删除})
+  - {path2} ({新建 / 修改 / 删除})
+
+### 解决什么问题
+{用户视角或系统视角的问题描述。不是"我加了一个函数"，而是"原本 X 场景下会 Y，需要 Z"。}
+
+### 为什么这么改
+{方案选择理由。如果有 ADR 已经讲过，这里只点出 ADR 编号 + 落地的关键决策；
+不重复抄 ADR 全文。如果是 ADR 之外的小决策，简述权衡。
+回补的 CR 在用户补全前会标记 [需用户补充]。}
+
+### 关联变更
+- 依赖：{CR-x, ...，无则写"无"}
+- 后续：{CR-y, ...，可在后续 CR 写出后回填，初次可留空}
+
+---
+```
+
+### 完整示例
+
+```markdown
+# 变更日志（Change Log）
+
+> task_id: a3b9c2f1
+> task: 实现用户通知系统：站内信 + 邮件，可配置偏好
+> base_branch: main
+> head_branch: feat/notification
+> worktree: /Users/dev/repos/buddy-feat-notification
+> 由 implementation-guide 中"变更日志纪律"在实施阶段维护
+> 通过 /sop-diff 查看带备注的 diff
+
+---
+
+## CR-1 — 抽离通知抽象层 NotificationChannel
+
+- timestamp: 2026-05-10T10:00:12Z
+- type: create
+- subtask: 1.1
+- adr: ADR-1
+- files:
+  - src/notification/channel.ts (新建)
+  - src/notification/types.ts (新建)
+
+### 解决什么问题
+站内信和邮件两个通道在数据结构、错误模型、重试策略上差异很大。如果直接在业务层 if/else，
+后续加短信、企业微信会反复改业务代码。
+
+### 为什么这么改
+按 ADR-1 决定，定义 NotificationChannel 接口 + 通道注册表。业务层只调 channel.send()，
+不感知具体实现。代价是当前只有两个通道时多一层间接，但符合"识别变化的维度"原则
+（通道未来必然增加）。
+
+### 关联变更
+- 依赖：无（这是基础抽象）
+- 后续：CR-2、CR-3 分别实现两个通道
+
+---
+
+## CR-2 — 实现邮件通道（基于 nodemailer）
+
+- timestamp: 2026-05-10T10:42:55Z
+- type: create
+- subtask: 1.2
+- adr: ADR-2
+- files:
+  - src/notification/email.ts (新建)
+  - src/notification/index.ts (修改)
+
+### 解决什么问题
+邮件通道之前没有任何代码，需要从零搭建 SMTP 连接 + 发送 + 重试。
+
+### 为什么这么改
+ADR-2 选定 nodemailer 而非自建。把重试与日志收敛在 EmailChannel 内部，对外只暴露
+send(payload)。SMTP 配置走环境变量，不写死。
+
+### 关联变更
+- 依赖：CR-1（实现 NotificationChannel 接口）
+- 后续：-
+```
+
+---
+
 ## review.md 格式
 
 ```markdown
@@ -128,8 +244,8 @@ interface {InterfaceName} {
 {由各 reviewer subagent 合并写入}
 
 ## 与上次审查的对比（iteration > 1 时填写）
-| 上次问题 ID | 上次状态 | 本次状态 | 是否真正修复 |
-|-----------|---------|---------|------------|
+| 上次问题 ID | 上次状态 | 本次状态 | 是否真正修复 | 对应修复 CR |
+|-----------|---------|---------|------------|------------|
 
 ## 审查结论
 {2-3 句综合判断}
