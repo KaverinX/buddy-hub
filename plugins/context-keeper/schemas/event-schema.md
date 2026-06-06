@@ -57,7 +57,8 @@
 ```jsonc
 {
   "type": "task" | "decision" | "risk" | "red_line" | "lesson" |
-          "author" | "file" | "module" | "review" | "report",
+          "author" | "file" | "module" | "review" | "report" |
+          "capability" | "spec_change",
   "id":   "<entity-specific id>",       // 见 entity-schema.md
   "ref":  {                             // 可选，物理引用
     "path": "...",                      // 文件系统路径
@@ -127,12 +128,36 @@
 | `red_line.violated`        | co-review 检测到违反考古红线      | `red_line`       |
 | `team_review.completed`    | scope-review 完成                 | `review`         |
 
+### 规格域（spec-keeper，对标 OpenSpec）
+
+| 类型                       | 触发                              | 必需 entity.type |
+|----------------------------|-----------------------------------|------------------|
+| `spec.bootstrapped`        | `/spec-bootstrap` 反向捕获能力为 living spec | `capability` |
+| `spec.proposed`            | `/spec-propose` 创建变更提案      | `spec_change`    |
+| `spec.delta.recorded`      | proposal 写入一条 ADDED/MODIFIED/REMOVED | `spec_change` |
+| `spec.applied`             | `/spec-apply` delta 合并进 living spec | `capability` |
+| `spec.archived`            | `/spec-archive` 归档变更          | `spec_change`    |
+| `spec.drift.detected`      | `/spec-check` 发现规格与测试/实现漂移 | `capability`  |
+| `spec.synced`              | `/spec-sync` 用分支改动反向互补 spec | `spec_change` |
+
+### 测试域（flowsmith TDD，对标 Superpowers）
+
+| 类型                       | 触发                              | 必需 entity.type |
+|----------------------------|-----------------------------------|------------------|
+| `test.red.created`         | TEST_FIRST 阶段写出失败测试       | `task`           |
+| `test.green.passed`        | 测试全部转绿                      | `task`           |
+| `test.gate.blocked`        | 绿灯门禁拦截 IMPL→OPT 迁移        | `task`           |
+| `debug.rootcause.found`    | systematic-debugging 定位到根因   | `task`           |
+| `debug.fix.verified`       | 修复经回归测试验证                | `task`           |
+| `requirement.clarified`    | /sop-brainstorm 澄清门禁完成      | `task`           |
+
 ### 知识沉淀
 
 | 类型                       | 触发                              | 必需 entity.type |
 |----------------------------|-----------------------------------|------------------|
 | `lesson.recorded`          | 任意 plugin emit lesson           | `lesson`         |
 | `pattern.detected`         | (Phase 2) 多 lesson 聚类形成 pattern | `lesson`      |
+| `skill.authored`           | writing-skills 落地/改进一个 Skill | `report`     |
 
 ### 格式化（formatter）
 

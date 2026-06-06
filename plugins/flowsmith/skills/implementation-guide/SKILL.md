@@ -5,6 +5,18 @@ description: 编码实施规范 Skill。在 SOP 流程的 IMPLEMENTATION 阶段�
 
 # 编码实施规范（implementation-guide）
 
+## ⚖️ IRON LAW（不可协商）
+
+**TEST_FIRST 阶段的测试必须先存在且为红，才能写实现；测试未全绿，不得离开 IMPLEMENTATION。**
+
+## 🚩 红旗清单（识别即停，回到 IRON LAW）
+
+- "先把功能写完，测试回头补" → 停，TDD 是先红后绿（见 `../tdd/SKILL.md`）
+- "架构没覆盖这个场景，我顺手改一下" → 停，先更新 arch.md 的 ADR 再编码
+- "TODO: handle error" → 停，错误处理与正常逻辑同等优先，当下写
+- "这块改完测试大概能过" → "大概"是红旗，去跑 `test_gate.command`
+- 以及共享红旗词表（见 `../_shared/iron-law.md`）
+
 ## 编码前的状态更新
 
 读取 `.sop/state.json`，确认 `ARCHITECTURE.status = "done"`。

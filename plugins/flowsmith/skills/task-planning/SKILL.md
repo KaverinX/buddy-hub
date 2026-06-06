@@ -10,7 +10,8 @@ description: 任务规划 Skill。在 SOP 流程的 PLANNING 阶段使用，对�
 1. 读取 `reference/state-machine.md` — 确认状态转换规则
 2. 读取 `reference/document-schemas.md` — 获取 plan.md 格式定义
 3. 读取 `.sop/state.json` — 确认当前 phase = PLANNING，若不是则拒绝执行并提示
-4. 读取 `.sop/lessons.md`（若存在）— 提取与本次任务相关的历史教训
+4. 读取 `.sop/brainstorm.md`（若存在）— 澄清门禁的结论，**优先采信**：范围/成功标准/选定方向直接据此写 plan.md，不再重新臆测
+5. 读取 `.sop/lessons.md`（若存在）— 提取与本次任务相关的历史教训
 
 ## 执行指令
 

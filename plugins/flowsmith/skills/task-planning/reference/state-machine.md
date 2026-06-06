@@ -3,17 +3,18 @@
 本文件定义整个 SOP 系统的状态机模型。所有 Skill、Subagent、Command 读写
 `.sop/state.json` 时，必须严格遵循此契约，不得假设字段含义或自行扩展格式。
 
-## `.sop/state.json` 完整结构（version 1.1）
+## `.sop/state.json` 完整结构（version 1.2）
 
 ```json
 {
-  "version": "1.1",
+  "version": "1.2",
   "task_id": "<8 字符随机字符串>",
   "task_summary": "<一句话概括任务>",
   "current_phase": "<PHASE_NAME>",
   "phases": {
     "PLANNING":      { "status": "...", "completed_at": null, "output": ".sop/plan.md" },
     "ARCHITECTURE":  { "status": "...", "completed_at": null, "output": ".sop/arch.md" },
+    "TEST_FIRST":    { "status": "...", "completed_at": null, "output": ".sop/tests-plan.md" },
     "IMPLEMENTATION":{ "status": "...", "completed_at": null, "output": "src/" },
     "OPTIMIZATION":  { "status": "...", "completed_at": null, "output": "src/" },
     "REVIEW":        { "status": "...", "completed_at": null, "output": ".sop/review.md" }
@@ -23,6 +24,15 @@
     "head_branch": "feat/notification",
     "worktree_path": "/Users/dev/repos/proj-feat-notification",
     "is_worktree": true
+  },
+  "test_gate": {
+    "command": "<运行测试的命令，如 `npm test` / `mvn -q test`>",
+    "last_status": "unknown",
+    "last_run_at": null
+  },
+  "spec_context": {
+    "linked_change_id": null,
+    "spec_dir": "spec/"
   },
   "open_issues": [],
   "change_records": {
@@ -38,77 +48,72 @@
 
 ### version 历史
 
-- `1.0` — 不含 `git_context` 和 `change_records`，由旧版 /sop-init 创建
-- `1.1` — 增加 `git_context`（worktree/branch 元信息）和 `change_records`（changelog.md 维护）
+- `1.0` — 不含 `git_context` 和 `change_records`
+- `1.1` — 增加 `git_context` 与 `change_records`
+- `1.2` — 新增 **TEST_FIRST 阶段**（对标 Superpowers TDD）、`test_gate`（测试绿灯门禁元信息）、
+  `spec_context`（对标 OpenSpec，关联 spec-keeper 的变更）。纯增量、可重跑、不破坏老数据。
 
-## 1.0 → 1.1 迁移规则
+## 1.1 → 1.2 迁移规则
 
-迁移**纯增量、可重跑、不破坏老数据**。由 `/sop-diff --backfill` 自动触发，规则：
+迁移**纯增量、可重跑、不破坏老数据**：
 
-1. 添加 `git_context`：自动探测当前 git 环境
-   - `base_branch`：优先 `git symbolic-ref refs/remotes/origin/HEAD`，回退 main/master/develop
-   - `head_branch`：当前分支
-   - `worktree_path`：`git rev-parse --show-toplevel`
-   - `is_worktree`：判断 `git rev-parse --git-dir` 是否含 `worktrees/`
-   - 不是 git 仓库时四项均 `null`
-2. 添加 `change_records`：`{ "next_id": 1, "log_file": ".sop/changelog.md" }`
-3. 升级 `version` 字段为 `"1.1"`
-4. 不修改任何已有字段（包括 phases / open_issues / iteration / 时间戳等）
+1. `phases` 中在 ARCHITECTURE 与 IMPLEMENTATION 之间插入 `TEST_FIRST`：
+   `{ "status": "pending", "completed_at": null, "output": ".sop/tests-plan.md" }`
+   - 老任务若 current_phase 已越过 ARCHITECTURE，则 TEST_FIRST 直接置 `"skipped"`，理由 `"1.2 迁移：任务在引入 TDD 前已开工"`
+2. 添加 `test_gate`：`command` 自动探测（见下），探不到留空由用户首次 /sop-test 时填
+3. 添加 `spec_context`：`{ "linked_change_id": null, "spec_dir": "spec/" }`
+4. 升级 `version` 为 `"1.2"`，不修改任何已有字段
+5. 幂等：对已是 1.2 的任务无副作用
 
-工具读取时：
-- 1.0 任务对 /sop-status、/sop-resume、/sop-review、/sop-close 等只读型命令仍能工作（缺失字段降级处理）
-- 1.0 任务执行 /sop-diff 时，提示用户先 `/sop-diff --backfill` 完成升级
-- 升级是幂等的：对已经是 1.1 的任务无副作用
-
-## git_context 字段说明
-
-| 字段 | 含义 | 取值规则 |
-|------|------|---------|
-| `base_branch` | 本任务的对比基线分支 | /sop-init 时探测，可被 /sop-diff 的 `--base=` 临时覆盖 |
-| `head_branch` | 本任务对应的工作分支 | /sop-init 时记录；切换分支后会失真，仅做参考 |
-| `worktree_path` | 任务所在工作区根路径 | 用于排查"我在哪个 worktree" |
-| `is_worktree` | 是否运行在 git worktree 中 | true 则可在 `git worktree list` 中找到 |
-
-非 git 项目下，四项均为 `null`，`/sop-diff` 不可用。
-
-## change_records 字段说明
+## test_gate 字段说明
 
 | 字段 | 含义 | 维护方 |
-|------|------|-------|
-| `next_id` | 下一条 CR 应使用的编号（自增）| implementation-guide skill 在每次写完一条 CR 后自增；--backfill 一次性多次自增 |
-| `log_file` | 变更日志文件路径 | 默认 `.sop/changelog.md`，理论上不应改 |
+|------|------|--------|
+| `command` | 运行全部相关测试的命令 | /sop-init 探测（package.json→`npm test`、pom.xml→`mvn -q test`、build.gradle→`gradle test`、pytest→`pytest`），探不到则用户填 |
+| `last_status` | `passed` / `failed` / `unknown` | `hooks/validate-tests.sh` 在阶段迁移时写入 |
+| `last_run_at` | 上次跑测试时间 | 同上 |
+
+## spec_context 字段说明
+
+| 字段 | 含义 |
+|------|------|
+| `linked_change_id` | 关联的 spec-keeper 变更 id（`spec/changes/<id>/`）；无则 null |
+| `spec_dir` | living spec 根目录，默认 `spec/` |
+
+/sop-init 时若检测到 `spec/` 存在且当前变更可匹配，记录 `linked_change_id`，PLANNING 阶段把对应 living spec 作为硬约束注入 plan.md。
 
 ## 阶段 status 取值
 
-- `pending`  — 尚未开始
-- `running`  — 进行中
-- `done`     — 已完成（必须设置 completed_at）
-- `skipped`  — 显式跳过（必须附理由）
-- `failed`   — 仅 REVIEW 阶段使用，表示发现 Critical 问题需返工
+- `pending` / `running` / `done`（须 completed_at） / `skipped`（须附理由） / `failed`（仅 REVIEW）
 
 ## 合法状态迁移表（FSM Transition Table）
 
 ```
 INIT          → PLANNING       条件：state.json 不存在，由 /sop-init 创建
 PLANNING      → ARCHITECTURE   条件：plan.md 存在 且 用户确认
-ARCHITECTURE  → IMPLEMENTATION 条件：arch.md 存在 且 用户确认
-IMPLEMENTATION→ OPTIMIZATION   条件：用户声明编码完成 且 changelog 无未备注改动
+ARCHITECTURE  → TEST_FIRST     条件：arch.md 存在 且 用户确认
+TEST_FIRST    → IMPLEMENTATION 条件：tests-plan.md 存在 且 至少一条测试处于"红"（失败因功能未实现）
+IMPLEMENTATION→ OPTIMIZATION   条件：【测试绿灯门禁】test_gate.last_status = "passed" 且 changelog 无未备注改动
 OPTIMIZATION  → REVIEW         条件：optimizer subagent 退出
 REVIEW        → IMPLEMENTATION 条件：review.md 中存在 status=open 的 Critical 问题
 REVIEW        → DONE           条件：review.md 中无 status=open 的 Critical 问题
 DONE          → archived       条件：/sop-close 执行
 ```
 
-注：`/sop-diff --backfill` **不影响 phase**——它只读 git diff、写 changelog.md，
-即使 current_phase 为 OPTIMIZATION/REVIEW/DONE 也允许执行。
+> 关键新增：**`IMPLEMENTATION → OPTIMIZATION` 是绿灯门禁**。迁移前由 `hooks/validate-tests.sh`
+> 运行 `test_gate.command`，非 `passed` 则拒绝迁移并 emit `test.gate.blocked`。这是对标 Superpowers
+> "测试不绿不准走"的硬约束，也是 flowsmith「过程即护栏」口号的真正落地。
+
+注：`/sop-diff --backfill` 不影响 phase。
 
 ## 非法迁移（必须拒绝并提示）
 
-- 跳过 PLANNING 直接进 ARCHITECTURE（除非 PLANNING.status = "skipped" 且 task_summary 已填写）
-- 跳过 ARCHITECTURE 直接进 IMPLEMENTATION
-- 在 REVIEW.status = "running" 时重新触发 REVIEW
+- 跳过 PLANNING / ARCHITECTURE（除非显式 skipped 且附理由）
+- **跳过 TEST_FIRST 直接进 IMPLEMENTATION**（除非 TEST_FIRST.status = "skipped" 且附理由）
+- **测试未绿就从 IMPLEMENTATION 进 OPTIMIZATION**
+- REVIEW.status = "running" 时重新触发 REVIEW
 - 任何当前阶段 status = "running" 时触发同阶段再次启动
-- DONE 状态下未执行 /sop-close 就开始新任务
+- DONE 未 /sop-close 就开新任务
 
 ## open_issues 数组元素结构
 
@@ -127,7 +132,7 @@ DONE          → archived       条件：/sop-close 执行
 
 ## 跳过阶段的合法场景
 
-跳过必须显式标记 `"status": "skipped"` 并在 `task_summary` 中附理由：
-- 单行 typo / 配置修改 → 可跳过 PLANNING 和 ARCHITECTURE
+跳过必须显式标记 `"status": "skipped"` 并附理由：
+- 单行 typo / 配置修改 → 可跳过 PLANNING、ARCHITECTURE、TEST_FIRST
 - 纯文档更新 → 可跳过所有阶段
-- 紧急热修复 → 可跳过 PLANNING/ARCHITECTURE，REVIEW 不可跳过
+- 紧急热修复 → 可跳过 PLANNING/ARCHITECTURE/TEST_FIRST，但 REVIEW 不可跳过；热修复事后须补回归测试

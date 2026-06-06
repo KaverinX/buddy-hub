@@ -79,6 +79,14 @@ description: 任务完成后归档，提炼经验写入 lessons.md 知识库
 }
 ```
 
+### Step 4.5 — 落地规格（若关联了 spec-keeper 变更）
+
+读取 `state.json` 的 `spec_context.linked_change_id`：
+- 若非 null，说明本任务实现的是一个 spec 变更 → 调用 `/spec-apply <linked_change_id> --from-sop`，
+  把该变更的 delta（ADDED/MODIFIED/REMOVED）合并进 `spec/capabilities/` 的 living spec，使其成为新真相。
+- 若为 null（未走规格驱动流程）→ 跳过本步。
+- emit `task.closed`；若执行了 spec-apply，spec-keeper 会另行 emit `spec.applied`。
+
 ### Step 5 — 输出归档确认
 
 ```

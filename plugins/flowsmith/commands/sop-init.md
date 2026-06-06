@@ -1,13 +1,26 @@
 ---
-description: 初始化新的 SOP 任务，创建 .sop/ 目录与 state.json，进入 PLANNING 阶段
-argument-hint: <任务描述>
+description: 初始化新的 SOP 任务，创建 .sop/ 目录与 state.json，进入 PLANNING 阶段。任务描述可省略——若上游已做 /sop-brainstorm 或 /spec-propose，自动继承其定稿描述
+argument-hint: [任务描述（可选；留空则从 brainstorm.md / 最近的 spec 提案自动继承）]
 ---
 
 # /sop-init — 初始化 SOP 任务
 
-任务描述：$ARGUMENTS
+任务描述（可选）：$ARGUMENTS
 
 ## 执行步骤
+
+### Step 0 — 确定任务描述（优先从上游继承，避免重复输入）
+
+按以下优先级确定 `task_summary`，**不要求用户重复描述任务**：
+
+1. **若 `$ARGUMENTS` 非空** → 用它（允许用户显式覆盖/精炼上游描述）。
+2. **否则若 `.sop/brainstorm.md` 存在** → 读取其头部 `> task: {...}` 行作为任务描述（这是澄清后的定稿描述），并向用户回显一句"已继承澄清结论：{描述}"。
+3. **否则若存在最近的、status=proposed 且尚未关联任务的 `spec/changes/<id>/`** → 读取其 `proposal.md` 标题作为任务描述，回显"已继承规格提案：{标题}（change=<id>）"，并在 Step 4 自动把 `spec_context.linked_change_id` 设为该 `<id>`。
+4. **若以上都没有，且 `$ARGUMENTS` 为空** → 提示用户：
+   > "请提供任务描述，或先执行 /sop-brainstorm（需求澄清）/ /spec-propose（规格提案）后再 /sop-init 自动继承。"
+   > 然后停止。
+
+> 继承不是黑箱：每次继承都回显采用了哪条来源的描述，用户可在下一句直接纠正（"不，任务其实是…"），Claude 据此更新 task_summary 再继续。
 
 ### Step 1 — 前置检查
 
@@ -43,17 +56,21 @@ mkdir -p .sop
 
 ### Step 4 — 初始化 state.json
 
-写入 `.sop/state.json`，结构严格遵循 task-planning skill 的 reference/state-machine.md：
+写入 `.sop/state.json`，结构严格遵循 task-planning skill 的 reference/state-machine.md（version 1.2）。
+先做两项探测：
+- **test_gate.command**：探测测试命令（package.json→`npm test`；pom.xml→`mvn -q test`；build.gradle→`gradle test`；pytest 项目→`pytest`）；探不到留空字符串，由首次 `/sop-test --command=` 设置。
+- **spec_context**：若仓库存在 `spec/` 目录，记录 `spec_dir`；若能匹配到一个 `spec/changes/<id>/`（如刚 /spec-propose 过）则填 `linked_change_id`，否则为 null。
 
 ```json
 {
-  "version": "1.1",
+  "version": "1.2",
   "task_id": "<生成 8 位随机字符串>",
-  "task_summary": "<$ARGUMENTS 原文>",
+  "task_summary": "<Step 0 确定的任务描述>",
   "current_phase": "PLANNING",
   "phases": {
     "PLANNING":       { "status": "pending", "completed_at": null, "output": ".sop/plan.md" },
     "ARCHITECTURE":   { "status": "pending", "completed_at": null, "output": ".sop/arch.md" },
+    "TEST_FIRST":     { "status": "pending", "completed_at": null, "output": ".sop/tests-plan.md" },
     "IMPLEMENTATION": { "status": "pending", "completed_at": null, "output": "src/" },
     "OPTIMIZATION":   { "status": "pending", "completed_at": null, "output": "src/" },
     "REVIEW":         { "status": "pending", "completed_at": null, "output": ".sop/review.md" }
@@ -64,17 +81,31 @@ mkdir -p .sop
     "worktree_path": "<Step 3 探测结果或 null>",
     "is_worktree": <true/false>
   },
+  "test_gate": {
+    "command": "<探测到的测试命令或空字符串>",
+    "last_status": "unknown",
+    "last_run_at": null
+  },
+  "spec_context": {
+    "linked_change_id": <匹配到的 change-id 或 null>,
+    "spec_dir": "spec/"
+  },
   "open_issues": [],
   "change_records": {
     "next_id": 1,
     "log_file": ".sop/changelog.md"
   },
   "iteration": 1,
-  "created_at": "<当前 ISO8601 时间>"
+  "created_at": "<当前 ISO8601 时间>",
+  "archived_at": null,
+  "lessons_written": false
 }
 ```
 
-> 注：`version` 升至 `1.1` 标识包含 `git_context` 与 `change_records` 字段。校验 hook 兼容老版本 1.0。
+> 注：`version` 为 `1.2`，含 TEST_FIRST 阶段、test_gate（测试绿灯门禁）、spec_context（关联 spec-keeper）。
+> 校验 hook 兼容老版本 1.0/1.1。若检测到 `.sop/brainstorm.md` 存在（来自 /sop-brainstorm），
+> PLANNING 阶段将以其澄清结论为准（见 task-planning skill）。
+> 若 `spec_context.linked_change_id` 非 null，PLANNING 将注入对应 living spec 作为硬约束。
 
 ### Step 5 — 初始化 lessons.md（若不存在）
 
