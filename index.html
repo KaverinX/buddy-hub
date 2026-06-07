@@ -1188,27 +1188,55 @@
                 name: "flowsmith",
                 role: "Core Orchestrator",
                 isCore: true,
-                desc: "状态机驱动的开发 SOP 工作流。AI 时代的工程骨架，强制执行从规划到审查的闭环流程，禁止「跳过思考直接编码」。",
+                desc: "状态机驱动的开发 SOP 工作流，内建测试先行纪律。强制执行从澄清、规划到审查的闭环，禁止「跳过思考直接编码」，并用绿灯门禁禁止「跳过测试」。",
                 category: "workflow",
-                version: "v1.0.0",
-                tags: ["SOP", "FSM", "Multi-Agent", "Governance"],
-                commands: ["/sop-init", "/sop-review", "/sop-resume", "/sop-status", "/sop-close", "/sop-bootstrap"],
+                version: "v1.3.0",
+                tags: ["SOP", "FSM", "Test-First", "Iron-Law", "Multi-Agent"],
+                commands: ["/sop-brainstorm", "/sop-init", "/sop-test", "/sop-review", "/sop-close", "/sop-resume", "/sop-status", "/sop-diff", "/skill-scaffold", "/sop-bootstrap"],
                 agents: 4,
-                skills: 3,
-                hooks: 1,
+                skills: 7,
+                hooks: 2,
                 features: [
-                    "状态机强制流程: PLANNING → ARCHITECTURE → IMPLEMENTATION → OPTIMIZATION → REVIEW → DONE",
-                    "多 Agent 并行审查 (Security / Logic / Architecture / Optimization)",
-                    "基于 Hook 的状态合法性自动校验",
-                    "跨任务知识沉淀到 .sop/lessons.md",
-                    "驱动 code-archaeologist 与 co-review 的核心引擎"
+                    "状态机强制流程: PLANNING → ARCHITECTURE → TEST_FIRST → IMPLEMENTATION → OPTIMIZATION → REVIEW → DONE",
+                    "TEST_FIRST 阶段 + 绿灯门禁: 先写失败测试, 测试不绿不准离开实现 (Hook 强制)",
+                    "Iron Law + 红旗清单贯穿所有技能, 反自我开脱; 需求澄清门禁 (/sop-brainstorm)",
+                    "TDD (先红后绿) 与系统化调试 (先根因后修复) 技能; 可自演进 (writing-skills)",
+                    "4 个独立上下文 Agent 并行审查; 跨任务知识沉淀到 .sop/lessons.md",
+                    "与 spec-keeper 深度集成: 规格作为规划硬约束, /sop-close 自动落地 delta"
                 ],
                 dependencies: [
+                    { direction: "receives", target: "spec-keeper", desc: "living spec 作为规划硬约束, 任务描述自动继承" },
                     { direction: "drives", target: "code-archaeologist", desc: "检测到重构意图时自动建议考古" },
                     { direction: "drives", target: "co-review", desc: "审查完成后自动触发团队协作分析" },
-                    { direction: "shared", target: "lessons.md", desc: "共享跨任务知识库" }
+                    { direction: "emits", target: "context-keeper", desc: "向事件知识图谱 emit task/test 事件" }
                 ],
                 install: "claude plugin install flowsmith@buddy-hub"
+            },
+            {
+                id: "spec-keeper",
+                name: "spec-keeper",
+                role: "Spec Truth Keeper",
+                isCore: false,
+                desc: "规格驱动开发 (SDD)。维护按能力组织、长期存活、与代码同步的 living spec; 以 proposal → apply → archive 三动作与 ADDED/MODIFIED/REMOVED delta 管理变更。动手前先对齐「做什么」。",
+                category: "workflow",
+                version: "v1.2.0",
+                tags: ["Spec-Driven", "Living-Spec", "Delta", "Brownfield"],
+                commands: ["/spec-propose", "/spec-bootstrap", "/spec-sync", "/spec-apply", "/spec-archive", "/spec-check", "/spec-status"],
+                agents: 0,
+                skills: 1,
+                hooks: 0,
+                features: [
+                    "living spec: 按能力组织的系统行为真相, 而非随任务消失的临时产物",
+                    "行为级 delta (ADDED/MODIFIED/REMOVED): 相对现有真相的 brownfield 友好 diff",
+                    "正向: /spec-propose 先写 delta 再实现",
+                    "反向: /spec-bootstrap 全量捕获基线 · /spec-sync 用分支改动增量互补",
+                    "/spec-apply 把已评审 delta 合并进 living spec (唯一改写真相的动作); /spec-check 漂移检测"
+                ],
+                dependencies: [
+                    { direction: "injects", target: "flowsmith", desc: "living spec 注入 plan.md; /sop-close 自动 /spec-apply" },
+                    { direction: "emits", target: "context-keeper", desc: "spec.* 事件进入知识图谱 (规格 + 事件溯源)" }
+                ],
+                install: "claude plugin install spec-keeper@buddy-hub"
             },
             {
                 id: "code-archaeologist",
@@ -1272,7 +1300,7 @@
                 isCore: false,
                 desc: "编辑即格式化的代码风格守卫。自动将团队规约注入 Claude 的编辑动作中，消除风格争论。",
                 category: "quality",
-                version: "v1.1.0",
+                version: "v1.0.0",
                 tags: ["Spotless", "Alipay Convention", "Auto-format"],
                 commands: ["/formatter:setup"],
                 agents: 0,
@@ -1289,6 +1317,31 @@
                     { direction: "orthogonal", target: "独立运行", desc: "与其他插件无状态交互，正交层运作" }
                 ],
                 install: "claude plugin install formatter@buddy-hub"
+            },
+            {
+                id: "context-keeper",
+                name: "context-keeper",
+                role: "Foundation · Knowledge Graph",
+                isCore: false,
+                desc: "事件溯源知识图谱，整个生态的地基层。append-only 事件流 + 物化视图，给每个插件一份可查询、可审计、可追溯的记忆; SkillBus 协议让插件互相观测而无需紧耦合。",
+                category: "infrastructure",
+                version: "v1.0.0",
+                tags: ["Event-Sourcing", "SkillBus", "Knowledge-Graph", "Foundation"],
+                commands: ["/ck-status", "/ck-query", "/ck-rebuild", "/ck-mirror", "/ck-init"],
+                agents: 0,
+                skills: 1,
+                hooks: 1,
+                features: [
+                    "append-only events.jsonl 单一可信源 + 可完全重建的物化视图 (entities/)",
+                    "SkillBus v0 事件协议: 现承载 spec.* 与 test.* 事件",
+                    "非侵入 mirror hook: 写入瞬间捕获状态变更, 不改插件逻辑",
+                    "每条事件带 provenance/evidence; 通过 ext.<plugin> 子树向前兼容",
+                    "所有插件共享并向其 emit 的知识图谱"
+                ],
+                dependencies: [
+                    { direction: "receives", target: "全部插件", desc: "汇聚 spec.* / test.* / task.* 等事件" }
+                ],
+                install: "claude plugin install context-keeper@buddy-hub"
             }
         ];
 
@@ -1303,8 +1356,8 @@
             {
                 phase: "backlog",
                 label: "Backlog",
-                name: "knowledge-base v2",
-                desc: "跨项目的经验沉淀中心。将所有插件的 lessons.md 聚合为全局语义索引，利用向量数据库实现跨项目经验注入，让每个新任务都能站在历史肩膀上。",
+                name: "atlas",
+                desc: "代码 wiki 与系统链路 spec。单项目可导航 wiki + 按接口契约 JOIN 的跨项目调用链图; 用「实然结构」对比「应然规格」喂漂移检测。",
                 connects: ["flowsmith", "code-archaeologist", "co-review"]
             },
             {
@@ -1485,7 +1538,7 @@
                                         </div>
                                         {phase >= 1 && (
                                             <div className="term-line">
-                                                <span className="ok">✓</span> Added marketplace · <span className="dim">buddy-hub (4 plugins)</span>
+                                                <span className="ok">✓</span> Added marketplace · <span className="dim">buddy-hub (6 plugins)</span>
                                             </div>
                                         )}
                                         {phase >= 1 && (
@@ -1498,7 +1551,7 @@
                                         )}
                                         {phase >= 2 && (
                                             <div className="term-line">
-                                                <span className="ok">✓</span> Installed flowsmith v1.0.0 · <span className="dim">6 cmds, 4 agents, 3 skills</span>
+                                                <span className="ok">✓</span> Installed flowsmith v1.3.0 · <span className="dim">10 cmds, 4 agents, 7 skills</span>
                                             </div>
                                         )}
                                         {phase >= 2 && (
@@ -1516,12 +1569,12 @@
                         {/* ─── Strip ───────────────────────────── */}
                         <section className="strip" aria-label="数据概览">
                             <div className="stat">
-                                <div className="stat-num"><em>4</em></div>
+                                <div className="stat-num"><em>6</em></div>
                                 <div className="stat-label">production plugins</div>
                             </div>
                             <div className="strip-divider"></div>
                             <div className="stat">
-                                <div className="stat-num">17</div>
+                                <div className="stat-num">33</div>
                                 <div className="stat-label">slash commands</div>
                             </div>
                             <div className="strip-divider"></div>
@@ -1531,7 +1584,7 @@
                             </div>
                             <div className="strip-divider"></div>
                             <div className="stat">
-                                <div className="stat-num">6</div>
+                                <div className="stat-num">12</div>
                                 <div className="stat-label">skill templates</div>
                             </div>
                         </section>
@@ -1545,7 +1598,7 @@
                                 </div>
                                 <div>
                                     <h2 id="sec-plugins" className="sec-title">
-                                        四个插件，<em>覆盖</em>开发全周期。
+                                        六个插件，<em>覆盖</em>开发全周期。
                                     </h2>
                                     <p className="sec-sub">
                                         一个核心编排器 + 三个专业插件，各自独立可用，组合使用时通过 Hook 与共享上下文产生化学反应。
@@ -1596,7 +1649,7 @@
                                         以 <em>flowsmith</em> 为核心编排器，分层协作。
                                     </h2>
                                     <p className="sec-sub">
-                                        每个插件可独立使用，组合使用时通过 Hook 与共享知识库产生化学反应。一个核心 + 三个分支 + 一个正交层。
+                                        每个插件可独立使用，组合使用时通过 Hook、共享知识库与事件总线产生化学反应。一个核心编排器 + 规格层 + 三个分支 + 一个事件地基。
                                     </p>
                                 </div>
                             </div>
@@ -1605,19 +1658,29 @@
                                 <div className="eco-core">
                                     <h4><em>flowsmith</em> · core orchestrator</h4>
                                     <p>
-                                        <span>PLANNING</span> → <span>ARCH</span> → <span>IMPL</span> → <span>OPT</span> → <span>REVIEW</span> → <span>DONE</span>
+                                        <span>PLANNING</span> → <span>ARCH</span> → <span>TEST</span> → <span>IMPL</span> → <span>OPT</span> → <span>REVIEW</span> → <span>DONE</span>
                                     </p>
                                 </div>
 
                                 <div className="eco-trunk">
                                     <div className="v-line"></div>
-                                    <div className="eco-trunk-label">↓ Hook 触发 <span>+</span> 上下文共享 ↓</div>
+                                    <div className="eco-trunk-label">↓ Hook 触发 <span>+</span> 上下文共享 <span>+</span> 事件 emit ↓</div>
                                     <div className="v-line"></div>
                                 </div>
 
                                 <div className="eco-bus" aria-hidden="true"></div>
 
                                 <div className="eco-branches">
+                                    <div className="eco-branch">
+                                        <div className="eco-branch-card">
+                                            <div className="eco-branch-name">spec-keeper</div>
+                                            <div className="eco-branch-role">Spec Truth Keeper</div>
+                                            <div className="eco-branch-arrow">
+                                                <span className="dir">→</span> living spec 注入规划约束
+                                                <span className="dir">←</span> /sop-close 自动 apply
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="eco-branch">
                                         <div className="eco-branch-card">
                                             <div className="eco-branch-name">code-archaeologist</div>
@@ -1646,9 +1709,20 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div className="eco-branch">
+                                        <div className="eco-branch-card">
+                                            <div className="eco-branch-name">context-keeper</div>
+                                            <div className="eco-branch-role">Foundation · Graph</div>
+                                            <div className="eco-branch-arrow">
+                                                <span className="dir">←</span> 汇聚全部 spec.* / test.* 事件
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="eco-shared">
+                                    <div className="eco-shared-item"><span className="key">→</span> context-keeper events.jsonl · 事件溯源知识图谱，所有插件 emit</div>
+                                    <div className="eco-shared-item"><span className="key">→</span> spec/capabilities · living spec 系统真相（应然）</div>
                                     <div className="eco-shared-item"><span className="key">→</span> .sop/lessons.md · 共享知识库，所有插件读写</div>
                                     <div className="eco-shared-item"><span className="key">→</span> .archaeology/report.md · 红线清单跨插件引用</div>
                                 </div>
@@ -1667,19 +1741,21 @@
                                         AI 编程不应是「更快地写出更多 Bug」。
                                     </h2>
                                     <p className="sec-sub">
-                                        我们相信工程纪律比生成速度更重要。这是支撑整个生态的六条信条。
+                                        我们相信工程纪律比生成速度更重要。这是支撑整个生态的八条信条。
                                     </p>
                                 </div>
                             </div>
 
                             <div className="vision-grid">
                                 {[
-                                    { num: "01", title: "流程即护栏", desc: "状态机强制「先思考再编码」。从需求分解、架构设计到多层审查，每个阶段都有明确的输入输出契约，禁止跳过。" },
-                                    { num: "02", title: "知识会沉淀", desc: "lessons.md 不是日志，是活的知识库。每次任务完成、每次审查发现、每次考古结论都会回流，让下一次任务站在历史肩膀上。" },
-                                    { num: "03", title: "多 Agent 协作", desc: "每个分析维度都由独立上下文的 Agent 执行，避免分析污染。安全审查不会被优化建议干扰，团队分析不会被个人偏见污染。" },
-                                    { num: "04", title: "隐私优先", desc: "团队协作分析严格隔离个人数据。不做横向对比、不判断态度、不泄露他人信息——让工具服务于成长，而非制造焦虑。" },
-                                    { num: "05", title: "考古而非猛冲", desc: "重构前先理解——为什么当初这样写？谁在依赖它？哪些是必要复杂性？这套思考框架能预防 90% 的重构事故。" },
-                                    { num: "06", title: "开发全周期", desc: "从「想法」到「上线」的完整链路：规划 → 设计 → 编码 → 格式化 → 考古 → 审查 → 团队协作 → 发布。每个环节都有插件护航。" }
+                                    { num: "01", title: "规格即真相", desc: "改系统前先对齐「做什么」。按能力组织的 living spec 与代码同步，让每次变更可 diff、可复审——正向提案、反向捕获、分支互补全流程。" },
+                                    { num: "02", title: "流程即护栏", desc: "状态机强制「先思考再编码、先测试再交付」。每个阶段都有明确输入输出契约，TEST_FIRST 绿灯门禁是硬的，禁止跳过。" },
+                                    { num: "03", title: "纪律高于自我开脱", desc: "每个刚性技能都带 Iron Law 和红旗清单，列出 AI 用来跳过规则的确切借口，阻止它把自己说服去违反纪律。" },
+                                    { num: "04", title: "知识会沉淀", desc: "事件溯源知识图谱 + lessons.md。每次完工、每次审查发现、每次考古结论都会回流，让下一次任务站在历史肩膀上。" },
+                                    { num: "05", title: "多 Agent 协作", desc: "每个分析维度都由独立上下文的 Agent 执行，避免分析污染。安全审查不会被优化建议干扰，团队分析不会被个人偏见污染。" },
+                                    { num: "06", title: "隐私优先", desc: "团队协作分析严格隔离个人数据。不做横向对比、不判断态度、不泄露他人信息——让工具服务于成长，而非制造焦虑。" },
+                                    { num: "07", title: "考古而非猛冲", desc: "重构前先理解——为什么当初这样写？谁在依赖它？哪些是必要复杂性？这套思考框架能预防 90% 的重构事故。" },
+                                    { num: "08", title: "开发全周期", desc: "从「想法」到「上线」的完整链路：规格 → 澄清 → 规划 → 设计 → 测试 → 编码 → 格式化 → 考古 → 审查 → 团队协作 → 发布。" }
                                 ].map((v, i) => (
                                     <article
                                         className="vision-item reveal"
