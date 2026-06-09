@@ -1,56 +1,52 @@
 ---
-description: 为【已有项目】反向捕获当前行为，生成整体 living spec（spec/capabilities/）。OpenSpec 式 brownfield：不重写代码，只把"系统现在做什么"沉淀为按能力组织的规格文档
-argument-hint: [--capability=<区域，如 auth/notification>] [--from=<目录或入口，如 src/api>]
+description: 为【已有项目】反向捕获当前行为，生成 OpenSpec 格式的整体真相 spec（openspec/specs/<domain>/spec.md）。brownfield：不重写代码，只把"系统现在做什么"沉淀为按 domain 组织、带 Requirement/Scenario 的规格
+argument-hint: [--domain=<区域，如 auth/notification>] [--from=<目录或入口，如 src/api>]
 ---
 
-# /spec-bootstrap — 反向生成项目整体规格
+# /spec-bootstrap — 反向生成项目整体规格（OpenSpec 格式）
 
 参数：$ARGUMENTS
 
-> 用途：项目还没有 living spec（或只有零散变更沉淀），需要一份"系统当前具备哪些能力、各自预期行为"的整体规格文档时使用。
-> 与 /spec-propose 相反：propose 是"打算怎么改"（forward），bootstrap 是"现在是什么样"（reverse capture）。
+> 与 `/spec-propose` 相反：propose 是"打算怎么改"（forward），bootstrap 是"现在是什么样"（reverse capture）。
+> 与 `/spec-align` 互补：bootstrap 从**代码**捕获新真相；align 从**旧版 spec/** 转格式。
 
 ## 前置读取
-1. `../../schemas/spec-schema.md` — living spec 格式（唯一格式来源）
-2. `../skills/spec-authoring/SKILL.md` — 撰写纪律（描述行为不描述实现、行为可判定）
-3. 已有 `spec/capabilities/`（若有，bootstrap 只补缺失能力，不覆盖已有真相）
+1. `schemas/spec-schema.md` — OpenSpec 真相 spec 格式（唯一来源）
+2. `../skills/spec-authoring/SKILL.md` — 撰写纪律
+3. 已有 `openspec/specs/`（若有，bootstrap 只补缺失 domain，不覆盖已有真相；若只有旧版 `spec/`，先 `/spec-align --migrate`）
 
-## ⚖️ 关键纪律（务必遵守 spec-authoring 的 IRON LAW）
-- 写**实然**（代码当前真实做什么），不是应然，也不是你认为它该怎样
-- 推断不确定的行为，**标记 `[待确认]`**，绝不臆造填满
-- 描述**行为**（可判定、能写成测试），不抄实现细节
+## ⚖️ 关键纪律
+- 写**实然**（代码当前真实做什么），不是应然。
+- 推断不确定的行为标 `[待确认]`，**绝不臆造**。
+- 描述**行为**（可写成 Scenario），不抄实现细节。
 
 ## 执行步骤
 
-### Step 1 — 圈定范围（强烈建议分区域，不要一次扫全仓库）
-- 若 `--capability=` / `--from=` 指定，只处理该区域
-- 否则先列出"候选能力清单"给用户确认后再逐个生成（一次性全仓库扫描质量差、易臆造）
-- 识别能力的信号：入口点（HTTP 路由 / CLI / 定时任务 / MQ 消费者）、对外公开模块/服务、独立的功能域
+### Step 1 — 圈定范围（建议分区域，别一次扫全仓库）
+- 若 `--domain=` / `--from=` 指定，只处理该区域；否则先列"候选 domain 清单"给用户确认再逐个生成。
+- domain 信号：入口点（HTTP 路由 / CLI / 定时任务 / MQ 消费者）、对外模块/服务、独立功能域。
 
-### Step 2 — 逐能力生成 spec.md
-对每个确认的能力，在 `spec/capabilities/<capability-id>/spec.md` 按 schema 第 2 节写：
-- **目的**：为谁解决什么问题
-- **行为规格（R-n）**：从代码与测试反推每条可判定行为（当/则/除非 + 验收）；不确定的标 `[待确认]`
-- **接口契约**：从路由/控制器/SDK 反推（method/path/req/resp/error）
-- **数据契约**：从模型/表结构反推关键约束
-- **非目标**：代码明显未支持、但容易被误以为支持的，列出
-- 头部 `status: active`，`last_change: bootstrap`
+### Step 2 — 逐 domain 生成 openspec/specs/<domain>/spec.md（按 schema §2）
+- `# <Domain> Specification`
+- `## Purpose`：为谁解决什么问题。
+- `## Requirements`：从代码与测试反推每条可判定行为 → `### Requirement: {名}` + `The system SHALL/MUST …`（RFC2119 英文关键字）+ ≥1 个 `#### Scenario:`（GIVEN/WHEN/THEN，覆盖 happy path 与关键边界）。
+- 接口 → 带 SHALL 的 Requirement + 覆盖 method/path/resp/error 的 Scenario；数据约束 → 约束类 Requirement + 校验 Scenario。
+- 不确定的标 `[待确认]`。
 
 ### Step 3 — 标注证据与待确认项
-- 每条能力末尾附"来源"（主要来自哪些文件/目录），便于人工核对
-- 汇总所有 `[待确认]` 项，请用户逐条确认或修正
+- 每个 domain 末尾附非规范性 `> 来源: {文件/目录}`（不影响 validate）。
+- 汇总所有 `[待确认]`，请用户逐条确认。
 
-### Step 4 — 事件与汇报
-- emit `spec.bootstrapped`（每个能力一条，evidence 指向来源文件）
-- 汇报：
+### Step 4 — 校验、事件与汇报
+- 跑 OpenSpec 一致性自查（Purpose + Requirements + 每需求 ≥1 Scenario + RFC2119）。
+- emit `spec.bootstrapped`（每个 domain 一条，evidence 指向来源文件）。
 ```
-✅ 已捕获 {n} 个能力 → spec/capabilities/
-能力：{列表}
+✅ 已捕获 {n} 个 domain → openspec/specs/
+domain：{列表}
 待确认项：{k}（请逐条核对，确认后即为系统真相基线）
 后续：新变更走 /spec-propose；该基线即作为 delta 的对比对象
 ```
 
 ## 注意
-- bootstrap 产物是**待核对的草稿基线**，不是即时真相——人工确认 `[待确认]` 后才可信。
-- 全自动、带调用链证据的提取是 atlas 插件（代码图谱）的目标；本命令做"AI 辅助阅读代码捕获"，需人工复核。
-- 与 flowsmith 无关，不创建 .sop/ 任务，可随时独立运行。
+- bootstrap 产物是**待核对的草稿基线**，人工确认 `[待确认]` 后才可信。
+- 与 flowsmith 无关，不创建 `.sop/`，可独立运行。

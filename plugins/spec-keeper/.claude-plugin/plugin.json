@@ -1,10 +1,10 @@
 {
   "name": "spec-keeper",
-  "version": "1.2.0",
-  "description": "规格驱动开发（SDD）插件。维护按能力组织、长期存活、与代码同步的 living spec；以 proposal → apply → archive 三动作管理变更，用 ADDED/MODIFIED/REMOVED delta 在需求/行为层面产出可复审的变更。对标 OpenSpec，深度集成 flowsmith 与 context-keeper。",
+  "version": "2.0.0",
+  "description": "规格驱动开发（SDD）插件。维护按 domain 组织、长期存活、与代码同步的 living spec；以 propose → apply → archive 三动作管理变更，用独立 delta 文件（ADDED/MODIFIED/REMOVED + Scenario）在需求/行为层面产出可复审的变更。产物逐字节对齐 OpenSpec（openspec/specs + changes、Requirement/Scenario、RFC2119、可 openspec validate），提供 /spec-align 一键迁移与校验。深度集成 flowsmith 与 context-keeper。",
   "author": { "name": "Velpro", "email": "xvelpro8@gmail.com" },
   "homepage": "https://github.com/Velpro/buddy-hub",
   "repository": "https://github.com/Velpro/buddy-hub",
   "license": "MIT",
-  "keywords": ["spec-driven", "sdd", "living-spec", "delta", "openspec", "buddy-hub", "flowsmith-integration"]
+  "keywords": ["spec-driven", "sdd", "living-spec", "delta", "openspec", "openspec-aligned", "requirement-scenario", "spec-align", "buddy-hub", "flowsmith-integration"]
 }

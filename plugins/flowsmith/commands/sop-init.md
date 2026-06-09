@@ -15,7 +15,7 @@ argument-hint: [任务描述（可选；留空则从 brainstorm.md / 最近的 s
 
 1. **若 `$ARGUMENTS` 非空** → 用它（允许用户显式覆盖/精炼上游描述）。
 2. **否则若 `.sop/brainstorm.md` 存在** → 读取其头部 `> task: {...}` 行作为任务描述（这是澄清后的定稿描述），并向用户回显一句"已继承澄清结论：{描述}"。
-3. **否则若存在最近的、status=proposed 且尚未关联任务的 `spec/changes/<id>/`** → 读取其 `proposal.md` 标题作为任务描述，回显"已继承规格提案：{标题}（change=<id>）"，并在 Step 4 自动把 `spec_context.linked_change_id` 设为该 `<id>`。
+3. **否则若存在最近的、status=proposed 且尚未关联任务的 `openspec/changes/<id>/`** → 读取其 `proposal.md` 标题作为任务描述，回显"已继承规格提案：{标题}（change=<id>）"，并在 Step 4 自动把 `spec_context.linked_change_id` 设为该 `<id>`。
 4. **若以上都没有，且 `$ARGUMENTS` 为空** → 提示用户：
    > "请提供任务描述，或先执行 /sop-brainstorm（需求澄清）/ /spec-propose（规格提案）后再 /sop-init 自动继承。"
    > 然后停止。
@@ -59,7 +59,7 @@ mkdir -p .sop
 写入 `.sop/state.json`，结构严格遵循 task-planning skill 的 reference/state-machine.md（version 1.2）。
 先做两项探测：
 - **test_gate.command**：探测测试命令（package.json→`npm test`；pom.xml→`mvn -q test`；build.gradle→`gradle test`；pytest 项目→`pytest`）；探不到留空字符串，由首次 `/sop-test --command=` 设置。
-- **spec_context**：若仓库存在 `spec/` 目录，记录 `spec_dir`；若能匹配到一个 `spec/changes/<id>/`（如刚 /spec-propose 过）则填 `linked_change_id`，否则为 null。
+- **spec_context**：若仓库存在 `openspec/` 目录，记录 `spec_dir`；若能匹配到一个 `openspec/changes/<id>/`（如刚 /spec-propose 过）则填 `linked_change_id`，否则为 null。
 
 ```json
 {
@@ -88,7 +88,7 @@ mkdir -p .sop
   },
   "spec_context": {
     "linked_change_id": <匹配到的 change-id 或 null>,
-    "spec_dir": "spec/"
+    "spec_dir": "openspec/"
   },
   "open_issues": [],
   "change_records": {

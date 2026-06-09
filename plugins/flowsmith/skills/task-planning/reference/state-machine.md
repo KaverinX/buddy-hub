@@ -32,7 +32,7 @@
   },
   "spec_context": {
     "linked_change_id": null,
-    "spec_dir": "spec/"
+    "spec_dir": "openspec/"
   },
   "open_issues": [],
   "change_records": {
@@ -61,7 +61,7 @@
    `{ "status": "pending", "completed_at": null, "output": ".sop/tests-plan.md" }`
    - 老任务若 current_phase 已越过 ARCHITECTURE，则 TEST_FIRST 直接置 `"skipped"`，理由 `"1.2 迁移：任务在引入 TDD 前已开工"`
 2. 添加 `test_gate`：`command` 自动探测（见下），探不到留空由用户首次 /sop-test 时填
-3. 添加 `spec_context`：`{ "linked_change_id": null, "spec_dir": "spec/" }`
+3. 添加 `spec_context`：`{ "linked_change_id": null, "spec_dir": "openspec/" }`
 4. 升级 `version` 为 `"1.2"`，不修改任何已有字段
 5. 幂等：对已是 1.2 的任务无副作用
 
@@ -77,7 +77,7 @@
 
 | 字段 | 含义 |
 |------|------|
-| `linked_change_id` | 关联的 spec-keeper 变更 id（`spec/changes/<id>/`）；无则 null |
+| `linked_change_id` | 关联的 spec-keeper 变更 id（`openspec/changes/<id>/`）；无则 null |
 | `spec_dir` | living spec 根目录，默认 `spec/` |
 
 /sop-init 时若检测到 `spec/` 存在且当前变更可匹配，记录 `linked_change_id`，PLANNING 阶段把对应 living spec 作为硬约束注入 plan.md。
